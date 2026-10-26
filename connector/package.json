@@ -1,0 +1,15 @@
+{
+  "name": "garmin-claude-connector",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "1.2.3"
+  },
+  "devDependencies": {
+    "wrangler": "4.149.0"
+  }
+}

@@ -1,0 +1,3 @@
+# Your connector password: 12+ characters (a short sentence is great).
+# It protects your Garmin data and is what you type when Claude connects.
+OWNER_PASSWORD="change-me-to-a-long-password"

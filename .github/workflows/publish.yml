@@ -1,0 +1,36 @@
+# Builds the guide page and the skill zip from this repo's code and publishes them on GitHub Pages.
+# Built here, never on anyone's laptop: the published files always match the public code.
+name: Publish guide page
+on:
+  push:
+    branches: [main]
+    paths: ['skill/**', '.github/workflows/publish.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node skill/build.mjs
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: skill/dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

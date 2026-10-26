@@ -1,0 +1,15 @@
+// Your own Garmin connector. The Deploy button creates the database and storage below in your
+// Cloudflare account and asks you for OWNER_PASSWORD (see .dev.vars.example).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "garmin-claude-connector",
+  "main": "src/index.js",
+  "compatibility_date": "2025-09-01",
+  // Every 5 minutes: load a few history requests; every 30 minutes: fetch your latest data.
+  "triggers": { "crons": ["*/5 * * * *"] },
+  // Your Garmin data (tables are created automatically on first use).
+  "d1_databases": [{ "binding": "DB", "database_name": "garmin-connector-data" }],
+  // Claude's login sessions for the connector (only hashes and encrypted data).
+  "kv_namespaces": [{ "binding": "OAUTH_KV" }],
+  "observability": { "enabled": false }
+}

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Security rule: this page may run only its own script below and may not contact ANY server
+     (connect-src 'none'). Your key physically can't leave your phone. Check it: view the source. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src '{{SCRIPT_HASH}}'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Garmin data for Claude: skill maker</title>
+<style>
+:root { --bg:#F5F3EE; --card:#fff; --ink:#1b2321; --muted:#5f6b67; --line:#e3ded3; --accent:#0f6b63; --accent-ink:#fff; --ok:#15803d; --warn-bg:#fff4d6; --warn-ink:#6b4b00; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0f1514; --card:#18211f; --ink:#ebe7df; --muted:#9aa5a1; --line:#283331; --accent:#35b3a7; --accent-ink:#06201d; --ok:#4ade80; --warn-bg:#33290f; --warn-ink:#f3d58c; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+main { max-width: 620px; margin: 0 auto; padding: 20px 16px 48px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 8px 0 6px; }
+.lead { color: var(--muted); margin: 0 0 18px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px; margin: 14px 0; }
+.step { display: flex; gap: 12px; align-items: baseline; margin: 0 0 8px; font-size: 18px; }
+.num { flex: 0 0 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+ol, ul { padding-inline-start: 22px; margin: 6px 0; }
+li { margin: 4px 0; }
+a { color: var(--accent); }
+code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; word-break: break-all; }
+label { display: block; font-weight: 600; margin: 8px 0 6px; }
+.row { display: flex; gap: 8px; }
+input { flex: 1; min-width: 0; font: inherit; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+button { font: inherit; font-weight: 600; border: 0; border-radius: 12px; padding: 12px 16px; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
+button.light { background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
+button.wide { width: 100%; margin-top: 12px; font-size: 17px; }
+button:disabled { opacity: .5; cursor: default; }
+.msg { margin-top: 10px; font-size: 15px; }
+.msg.ok { color: var(--ok); font-weight: 600; } .msg.err { color: #c2410c; font-weight: 600; }
+.trust { background: var(--warn-bg); color: var(--warn-ink); border: 0; }
+.trust h2 { font-size: 17px; margin: 0 0 8px; }
+.copy { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+.small { font-size: 13px; color: var(--muted); }
+.yes li::marker { content: "✓  "; color: var(--ok); } .no li::marker { content: "✗  "; color: #c2410c; }
+footer { margin-top: 28px; font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Ask Claude about your Garmin data</h1>
+  <p class="lead">Your runs, sleep, HRV, Body Battery and weight, answered by Claude on your phone. Free, private, about 3 minutes. Needs a paid Claude plan (Pro or Max).</p>
+
+  <div class="card">
+    <h2 style="font-size:17px;margin:0 0 8px">Pick one</h2>
+    <ul style="margin:0">
+      <li><b>Option 1, the easy way</b> (this page, about 3 min): a Claude Skill. Needs Claude <b>Pro or Max</b>.</li>
+      <li><b>Option 2, your own connector</b> (about 10 min): works on Claude's <b>free plan</b> and ChatGPT, keeps a full year of history, updates by itself. <a href="https://github.com/abdullahmsalama/garmin-claude/tree/main/connector#readme" target="_blank" rel="noopener noreferrer">Set up option 2 →</a></li>
+    </ul>
+  </div>
+
+  <h2 style="font-size:19px;margin:22px 0 0">Option 1: the Claude Skill</h2>
+
+  <div class="card trust">
+    <h2>🔒 Your key never leaves this phone</h2>
+    <p style="margin:0">This page has no server and a security rule that blocks it from sending anything over the internet. It builds your skill file right here. <b>Try it:</b> turn on airplane mode before step 2. It still works.</p>
+  </div>
+
+  <div class="card">
+    <p class="step"><span class="num">1</span><b>Get your Garmin key</b></p>
+    <ol>
+      <li>Open <a href="https://connect.garmin.com/app/settings/personalApiToken" target="_blank" rel="noopener noreferrer">Garmin Connect → Settings → Personal API Key</a> and sign in.</li>
+      <li>Tap <b>Create</b>. Pick how long it lasts (30 days is the safest; 1 year is the least hassle).</li>
+      <li>Copy the key. Garmin shows it only once.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <p class="step"><span class="num">2</span><b>Make your skill</b></p>
+    <label for="key">Paste your Garmin Personal API key</label>
+    <div class="row"><input id="key" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="your key"><button class="light" id="show" type="button">Show</button></div>
+    <button class="wide" id="make" type="button">Download my skill</button>
+    <div class="msg" id="msg" role="status"></div>
+    <p class="small">You get <b>my-garmin-data.zip</b>. Keep it private: it contains your key. This page doesn't save anything.</p>
+  </div>
+
+  <div class="card">
+    <p class="step"><span class="num">3</span><b>Add it to Claude</b> (once)</p>
+    <p class="small" style="margin-top:0">Do this at <b>claude.ai</b> in your browser. These settings aren't in the phone app yet.</p>
+    <ol>
+      <li><b>Settings → Capabilities</b>: turn on <b>Code execution and file creation</b>.</li>
+      <li>Just below it, turn on network access (it may be called <b>Allow network egress</b>, <b>Network access</b> or <b>Domain allowlist</b>), choose specific domains, and add only:
+        <div class="copy"><span class="mono">personal.connectapi.garmin.com</span><button class="light" id="copyDomain" type="button">Copy</button></div>
+        <span class="small">Don't choose "All domains". With only Garmin allowed, the skill can't send your data anywhere else, and Claude enforces that.</span></li>
+      <li><b>Settings → Capabilities → Skills</b>: tap <b>Upload skill</b> and choose <b>my-garmin-data.zip</b>.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <p class="step"><span class="num">4</span><b>Ask away</b>, in the Claude app or on the web</p>
+    <ul>
+      <li>"Am I recovered enough to run hard today?"</li>
+      <li>"How did my sleep this week compare to last week?"</li>
+      <li>"Look at my last 4 weeks of running and build next week's plan."</li>
+      <li>"Is my resting heart rate trending up?"</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:17px;margin:0 0 8px">What it does, and what it doesn't</h2>
+    <ul class="yes"><li>Reads your activities, sleep, HRV, stress, Body Battery, weight, HR zones and fitness age from Garmin's official Personal API</li><li>Runs inside your own Claude account. The code is open: <a href="https://github.com/abdullahmsalama/garmin-claude/blob/main/skill/my-garmin-data/scripts/garmin.py" target="_blank" rel="noopener noreferrer">one short Python file on GitHub</a></li></ul>
+    <ul class="no"><li>No accounts, no server, no tracking, nothing collected or sold</li><li>Can't change anything in Garmin or send anything to your watch (the API is read-only)</li></ul>
+    <p class="small">Want to check before you trust it? Upload the zip into a Claude chat first and ask: <i>"Does this send my data anywhere except Garmin? Can it change anything?"</i></p>
+    <p class="small">Changed your mind? Delete the key in Garmin Connect → Settings → Personal API Key, and remove the skill in Claude.</p>
+  </div>
+
+  <footer>Not affiliated with or endorsed by Garmin or Anthropic. Not medical advice. Skill version {{VERSION}} · zip fingerprint (without your key) <span class="mono">{{ZIP_SHA}}</span></footer>
+</main>
+<script>{{SCRIPT}}</script>
+</body>
+</html>
