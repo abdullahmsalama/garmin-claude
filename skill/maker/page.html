@@ -4,112 +4,312 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- Security rule: this page may run only its own script below and may not contact ANY server
-     (connect-src 'none'). Your key physically can't leave your phone. Check it: view the source. -->
+     (connect-src 'none'). Your key physically can't leave your phone. Check it: view the source.
+     Every picture on this page is drawn right here (CSS + inline SVG): no outside images or fonts. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src '{{SCRIPT_HASH}}'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
-<title>Garmin data for Claude: skill maker</title>
+<meta name="theme-color" content="#070d18">
+<title>Ask Claude about your Garmin data</title>
 <style>
-:root { --bg:#F5F3EE; --card:#fff; --ink:#1b2321; --muted:#5f6b67; --line:#e3ded3; --accent:#0f6b63; --accent-ink:#fff; --ok:#15803d; --warn-bg:#fff4d6; --warn-ink:#6b4b00; color-scheme: light; }
-@media (prefers-color-scheme: dark) { :root { --bg:#0f1514; --card:#18211f; --ink:#ebe7df; --muted:#9aa5a1; --line:#283331; --accent:#35b3a7; --accent-ink:#06201d; --ok:#4ade80; --warn-bg:#33290f; --warn-ink:#f3d58c; color-scheme: dark; } }
+:root {
+  --night: #070d18; --night-2: #0d1828; --glass: rgba(255,255,255,.06); --glass-line: rgba(255,255,255,.12);
+  --bg: #f4f6f8; --card: #ffffff; --ink: #0f1a24; --muted: #5b6875; --line: #e2e7ec;
+  --teal: #19c3b1; --cyan: #38bdf8; --lime: #a3e635; --coral: #fb7185; --amber: #fbbf24; --violet: #a78bfa;
+  --accent: #0e9f8f; --accent-ink: #fff; --ok: #15803d; --bad: #c2410c;
+  --radius: 20px; color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0a121e; --card: #111c2b; --ink: #e8eef4; --muted: #94a3b2; --line: #1f2c3d; --accent: #2dd4bf; --accent-ink: #04211d; --ok: #4ade80; --bad: #fb923c; color-scheme: dark; }
+}
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
-main { max-width: 620px; margin: 0 auto; padding: 20px 16px 48px; }
-h1 { font-size: 26px; line-height: 1.2; margin: 8px 0 6px; }
-.lead { color: var(--muted); margin: 0 0 18px; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px; margin: 14px 0; }
-.step { display: flex; gap: 12px; align-items: baseline; margin: 0 0 8px; font-size: 18px; }
-.num { flex: 0 0 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-weight: 700; font-size: 15px; }
-ol, ul { padding-inline-start: 22px; margin: 6px 0; }
-li { margin: 4px 0; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-text-size-adjust: 100%; }
 a { color: var(--accent); }
-code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; word-break: break-all; }
-label { display: block; font-weight: 600; margin: 8px 0 6px; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 18px; }
+
+/* ---------- hero ---------- */
+.hero { position: relative; overflow: hidden; color: #eaf6f5; background:
+  radial-gradient(900px 420px at 85% -10%, rgba(56,189,248,.28), transparent 60%),
+  radial-gradient(700px 380px at -10% 110%, rgba(25,195,177,.30), transparent 60%),
+  linear-gradient(180deg, var(--night), var(--night-2));
+  padding: calc(28px + env(safe-area-inset-top)) 0 56px; }
+.hero::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px); background-size: 34px 34px; mask-image: radial-gradient(ellipse at 50% 40%, #000 30%, transparent 75%); -webkit-mask-image: radial-gradient(ellipse at 50% 40%, #000 30%, transparent 75%); }
+.ecg { position: absolute; left: 0; right: 0; bottom: 18px; width: 100%; height: 90px; opacity: .55; }
+.ecg path { fill: none; stroke: url(#ecgGrad); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1400; stroke-dashoffset: 1400; animation: ecg 4.2s linear infinite; }
+@keyframes ecg { to { stroke-dashoffset: -1400; } }
+.hero-grid { position: relative; display: grid; grid-template-columns: 1.05fr .95fr; gap: 28px; align-items: center; }
+.pill { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; font-weight: 600; letter-spacing: .02em; padding: 6px 12px; border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-line); color: #c9f5ef; }
+.pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 0 0 rgba(163,230,53,.7); animation: ping 1.8s infinite; }
+@keyframes ping { 70% { box-shadow: 0 0 0 9px rgba(163,230,53,0); } 100% { box-shadow: 0 0 0 0 rgba(163,230,53,0); } }
+h1 { font: 800 clamp(34px, 6.4vw, 60px)/1.04 ui-rounded, "SF Pro Rounded", system-ui, sans-serif; letter-spacing: -.02em; margin: 16px 0 14px; }
+h1 .grad { background: linear-gradient(90deg, var(--teal), var(--cyan) 45%, var(--lime)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.sub { font-size: clamp(16px, 2.2vw, 19px); color: #b9cbd6; max-width: 34em; margin: 0 0 22px; }
+.cta-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.cta { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; text-decoration: none; padding: 13px 20px; border-radius: 14px; color: #04211d; background: linear-gradient(135deg, var(--teal), var(--lime)); box-shadow: 0 10px 30px -10px rgba(45,212,191,.7); transition: transform .15s; }
+.cta:hover { transform: translateY(-2px); }
+.cta.ghost { background: var(--glass); color: #eaf6f5; border: 1px solid var(--glass-line); box-shadow: none; }
+.stats { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 26px; font-size: 13px; color: #9fb4c1; }
+.stats b { display: block; font-size: 20px; color: #fff; }
+
+/* hero illustration: watch -> data -> chat */
+.scene { position: relative; aspect-ratio: 1 / .9; max-width: 460px; justify-self: center; width: 100%; }
+.scene svg.flow { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.chip { position: absolute; display: flex; align-items: center; gap: 7px; padding: 7px 11px; border-radius: 12px; font-size: 13px; font-weight: 700; color: #fff; background: rgba(13,24,40,.72); border: 1px solid var(--glass-line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 8px 24px -10px rgba(0,0,0,.6); animation: float 6s ease-in-out infinite; white-space: nowrap; }
+.chip small { font-weight: 600; color: #9fb4c1; font-size: 11px; }
+.chip .dot { width: 9px; height: 9px; border-radius: 50%; }
+@keyframes float { 50% { transform: translateY(-9px); } }
+.c1 { top: 4%; left: 30%; animation-delay: -1s; } .c2 { top: 30%; left: 38%; animation-delay: -3s; } .c3 { top: 60%; left: 34%; animation-delay: -2s; } .c4 { top: 84%; left: 46%; animation-delay: -4.5s; }
+
+/* ---------- sections ---------- */
+section { padding: 54px 0; }
+.kicker { font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 6px; }
+h2 { font: 800 clamp(26px, 4vw, 36px)/1.15 ui-rounded, "SF Pro Rounded", system-ui, sans-serif; letter-spacing: -.01em; margin: 0 0 12px; }
+.lead { color: var(--muted); font-size: 17px; margin: 0 0 22px; max-width: 40em; }
+
+/* chat demo */
+.demo { display: grid; grid-template-columns: .9fr 1.1fr; gap: 30px; align-items: center; }
+.phone { background: var(--card); border: 1px solid var(--line); border-radius: 30px; padding: 18px 14px; box-shadow: 0 30px 60px -30px rgba(7,13,24,.35); max-width: 400px; width: 100%; justify-self: center; }
+.phone-top { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); padding: 0 6px 10px; border-bottom: 1px solid var(--line); }
+.phone-top .tool { margin-left: auto; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 99px; background: rgba(25,195,177,.14); color: var(--accent); }
+.bubble { margin: 12px 4px; padding: 11px 14px; border-radius: 18px; font-size: 15px; line-height: 1.5; min-height: 1.5em; }
+.bubble.me { background: linear-gradient(135deg, var(--teal), var(--cyan)); color: #04211d; margin-left: 18%; border-bottom-right-radius: 6px; font-weight: 600; }
+.bubble.ai { background: var(--bg); border: 1px solid var(--line); margin-right: 8%; border-bottom-left-radius: 6px; }
+.bubble.ai .n { font-weight: 800; color: var(--accent); }
+.caret { display: inline-block; width: 2px; height: 1.05em; background: currentColor; vertical-align: -2px; margin-left: 1px; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.mini-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 2px 4px 4px; }
+.mini { font-size: 11.5px; font-weight: 700; padding: 4px 9px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+.asks { display: grid; gap: 10px; }
+.ask { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); font-weight: 600; cursor: pointer; text-align: left; font: inherit; font-weight: 600; color: var(--ink); transition: border-color .2s, transform .15s; }
+.ask:hover, .ask.on { border-color: var(--accent); transform: translateX(3px); }
+.ask span:first-child { font-size: 20px; line-height: 1.2; }
+
+/* toggle */
+.switch { position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 6px; border-radius: 20px; background: var(--card); border: 1px solid var(--line); max-width: 640px; margin: 0 auto 26px; box-shadow: 0 16px 40px -28px rgba(7,13,24,.4); }
+.switch .knob { position: absolute; top: 6px; bottom: 6px; left: 6px; width: calc(50% - 6px); border-radius: 15px; background: linear-gradient(135deg, var(--teal), var(--cyan)); transition: transform .35s cubic-bezier(.6,.2,.2,1.2); box-shadow: 0 8px 22px -8px rgba(45,212,191,.8); }
+.switch[data-on="2"] .knob { transform: translateX(100%); }
+.switch button { position: relative; z-index: 1; border: 0; background: none; font: inherit; color: var(--muted); padding: 12px 10px; cursor: pointer; border-radius: 15px; text-align: center; transition: color .25s; }
+.switch button b { display: block; font-size: 16px; color: inherit; }
+.switch button small { font-size: 12.5px; }
+.switch button[aria-selected="true"] { color: #04211d; }
+.facts { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: -10px 0 26px; }
+.fact { font-size: 13px; font-weight: 700; padding: 6px 12px; border-radius: 99px; background: var(--card); border: 1px solid var(--line); }
+.panel { animation: rise .45s ease both; }
+.panel[hidden] { display: none; }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } }
+
+/* steps timeline */
+.steps { position: relative; display: grid; gap: 16px; max-width: 720px; margin: 0 auto; }
+.steps::before { content: ""; position: absolute; left: 23px; top: 26px; bottom: 26px; width: 2px; background: linear-gradient(var(--teal), var(--cyan), var(--lime)); opacity: .5; }
+.step { position: relative; display: grid; grid-template-columns: 48px 1fr; gap: 14px; }
+.num { width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center; font-weight: 800; font-size: 19px; color: #04211d; background: linear-gradient(135deg, var(--teal), var(--lime)); box-shadow: 0 8px 20px -8px rgba(45,212,191,.8); z-index: 1; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; min-width: 0; }
+.box h3 { margin: 2px 0 8px; font-size: 18px; }
+.box ol, .box ul { padding-inline-start: 20px; margin: 6px 0; } .box li { margin: 5px 0; }
+.time { float: right; font-size: 12px; font-weight: 700; color: var(--muted); }
+label { display: block; font-weight: 700; margin: 6px 0 8px; }
 .row { display: flex; gap: 8px; }
-input { flex: 1; min-width: 0; font: inherit; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
-button { font: inherit; font-weight: 600; border: 0; border-radius: 12px; padding: 12px 16px; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
-button.light { background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
-button.wide { width: 100%; margin-top: 12px; font-size: 17px; }
-button:disabled { opacity: .5; cursor: default; }
-.msg { margin-top: 10px; font-size: 15px; }
-.msg.ok { color: var(--ok); font-weight: 600; } .msg.err { color: #c2410c; font-weight: 600; }
-.trust { background: var(--warn-bg); color: var(--warn-ink); border: 0; }
-.trust h2 { font-size: 17px; margin: 0 0 8px; }
-.copy { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
-.small { font-size: 13px; color: var(--muted); }
-.yes li::marker { content: "✓  "; color: var(--ok); } .no li::marker { content: "✗  "; color: #c2410c; }
-footer { margin-top: 28px; font-size: 13px; color: var(--muted); }
+input { flex: 1; min-width: 0; font: inherit; padding: 13px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+button.btn { font: inherit; font-weight: 700; border: 0; border-radius: 14px; padding: 13px 18px; cursor: pointer; background: linear-gradient(135deg, var(--teal), var(--cyan)); color: #04211d; }
+button.light { font: inherit; font-weight: 600; border-radius: 14px; padding: 12px 14px; cursor: pointer; background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
+button.wide { width: 100%; margin-top: 12px; font-size: 17px; padding: 15px; }
+.msg { margin-top: 10px; font-size: 15px; } .msg.ok { color: var(--ok); font-weight: 700; } .msg.err { color: var(--bad); font-weight: 700; }
+.small { font-size: 13.5px; color: var(--muted); }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 2px 7px; word-break: break-all; }
+.copy { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+.shield { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 16px; margin-bottom: 12px; background: linear-gradient(135deg, rgba(25,195,177,.12), rgba(163,230,53,.10)); border: 1px solid rgba(25,195,177,.35); font-size: 14.5px; }
+.shield span { font-size: 22px; }
+.deploy { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 800; padding: 14px 20px; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #f6821f, #fbad41); box-shadow: 0 12px 26px -12px rgba(246,130,31,.9); margin: 6px 0; }
+
+/* trust grid */
+.trust { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.t { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+.t .ic { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; font-size: 21px; margin-bottom: 10px; background: linear-gradient(135deg, rgba(25,195,177,.18), rgba(56,189,248,.18)); }
+.t b { display: block; margin-bottom: 4px; } .t p { margin: 0; font-size: 14px; color: var(--muted); }
+footer { padding: 30px 0 calc(40px + env(safe-area-inset-bottom)); font-size: 13px; color: var(--muted); text-align: center; }
+
+@media (max-width: 820px) {
+  .hero-grid, .demo { grid-template-columns: 1fr; }
+  .scene { max-width: 380px; margin-top: 6px; }
+  .demo > div:last-child { order: -1; }
+  .trust { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 420px) { .trust { grid-template-columns: 1fr; } .switch button small { display: none; } }
+@media (prefers-reduced-motion: reduce) { *, *::before { animation: none !important; transition: none !important; } .ecg path { stroke-dashoffset: 0; } }
 </style>
 </head>
 <body>
-<main>
-  <h1>Ask Claude about your Garmin data</h1>
-  <p class="lead">Your runs, sleep, HRV, Body Battery and weight, answered by Claude on your phone. Free, private, about 3 minutes. Needs a paid Claude plan (Pro or Max).</p>
 
-  <div class="card">
-    <h2 style="font-size:17px;margin:0 0 8px">Pick one</h2>
-    <ul style="margin:0">
-      <li><b>Option 1, the easy way</b> (this page, about 3 min): a Claude Skill. Needs Claude <b>Pro or Max</b>.</li>
-      <li><b>Option 2, your own connector</b> (about 10 min): works on Claude's <b>free plan</b> and ChatGPT, keeps a full year of history, updates by itself. <a href="https://github.com/abdullahmsalama/garmin-claude/tree/main/connector#readme" target="_blank" rel="noopener noreferrer">Set up option 2 →</a></li>
-    </ul>
+<header class="hero">
+  <svg class="ecg" viewBox="0 0 1200 90" preserveAspectRatio="none" aria-hidden="true">
+    <defs><linearGradient id="ecgGrad" x1="0" x2="1"><stop offset="0" stop-color="#19c3b1" stop-opacity="0"/><stop offset=".5" stop-color="#38bdf8"/><stop offset="1" stop-color="#a3e635" stop-opacity="0"/></linearGradient></defs>
+    <path d="M0 60 H180 l14 -8 14 8 H330 l10 0 8 -46 12 70 10 -40 8 14 H560 l14 -8 14 8 H720 l10 0 8 -46 12 70 10 -40 8 14 H960 l14 -8 14 8 H1200"/>
+  </svg>
+  <div class="wrap hero-grid">
+    <div>
+      <span class="pill"><i></i> Garmin → Claude, live</span>
+      <h1>Your watch knows.<br><span class="grad">Now just ask.</span></h1>
+      <p class="sub">Runs, sleep, HRV, Body Battery, stress and weight, answered by Claude on your phone, from your own Garmin data. Free, private, open source.</p>
+      <div class="cta-row">
+        <a class="cta" href="#setup">Set it up ↓</a>
+        <a class="cta ghost" href="#demo">See an answer</a>
+      </div>
+      <div class="stats"><span><b>3 min</b>easiest setup</span><span><b>1 year</b>of your history</span><span><b>0</b>data collected</span></div>
+    </div>
+
+    <div class="scene" aria-hidden="true">
+      <svg class="flow" viewBox="0 0 400 360">
+        <defs>
+          <linearGradient id="wire" x1="0" x2="1"><stop offset="0" stop-color="#19c3b1"/><stop offset="1" stop-color="#38bdf8"/></linearGradient>
+          <radialGradient id="face" cx=".5" cy=".4" r=".6"><stop offset="0" stop-color="#16314a"/><stop offset="1" stop-color="#0a1626"/></radialGradient>
+          <filter id="glow"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <!-- wires from the watch to the chat -->
+        <g fill="none" stroke="url(#wire)" stroke-width="2" stroke-dasharray="5 7" opacity=".55">
+          <path id="w1" d="M118 150 C190 70, 250 70, 318 104"/>
+          <path id="w2" d="M124 176 C200 160, 250 168, 314 160"/>
+          <path id="w3" d="M118 202 C190 280, 250 280, 318 226"/>
+        </g>
+        <g filter="url(#glow)">
+          <circle r="4.5" fill="#a3e635"><animateMotion dur="2.6s" repeatCount="indefinite"><mpath href="#w1"/></animateMotion></circle>
+          <circle r="4.5" fill="#38bdf8"><animateMotion dur="2.1s" begin="-.7s" repeatCount="indefinite"><mpath href="#w2"/></animateMotion></circle>
+          <circle r="4.5" fill="#fb7185"><animateMotion dur="3s" begin="-1.4s" repeatCount="indefinite"><mpath href="#w3"/></animateMotion></circle>
+          <circle r="3.5" fill="#fbbf24"><animateMotion dur="2.4s" begin="-1.9s" repeatCount="indefinite"><mpath href="#w2"/></animateMotion></circle>
+        </g>
+        <!-- watch -->
+        <g transform="translate(70 176)">
+          <rect x="-26" y="-118" width="52" height="64" rx="14" fill="#13202f" stroke="#24364a"/>
+          <rect x="-26" y="54" width="52" height="64" rx="14" fill="#13202f" stroke="#24364a"/>
+          <circle r="62" fill="#1b2a3b" stroke="#2f4560" stroke-width="3"/>
+          <circle r="52" fill="url(#face)"/>
+          <circle r="52" fill="none" stroke="#19c3b1" stroke-width="4" stroke-dasharray="220 327" transform="rotate(-90)" stroke-linecap="round" opacity=".9"/>
+          <circle r="45" fill="none" stroke="#a3e635" stroke-width="3" stroke-dasharray="150 283" transform="rotate(-90)" stroke-linecap="round" opacity=".8"/>
+          <text y="-6" text-anchor="middle" fill="#fff" font-size="22" font-weight="800" font-family="system-ui">64</text>
+          <text y="12" text-anchor="middle" fill="#8fb3c4" font-size="9.5" font-weight="700" font-family="system-ui" letter-spacing="1">HRV · MS</text>
+          <path d="M-22 26 h9 l4 -7 5 13 4 -9 3 3 h19" fill="none" stroke="#fb7185" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="60" y="-14" width="6" height="18" rx="3" fill="#2f4560"/>
+        </g>
+        <!-- chat window -->
+        <g transform="translate(318 92)">
+          <rect width="84" height="176" rx="18" fill="#0f1c2c" stroke="#2a3d54"/>
+          <rect x="10" y="16" width="56" height="20" rx="10" fill="#19c3b1" opacity=".85"/>
+          <rect x="10" y="46" width="64" height="44" rx="11" fill="#1d2e43"/>
+          <rect x="18" y="56" width="44" height="5" rx="2.5" fill="#5c7a96"/><rect x="18" y="66" width="36" height="5" rx="2.5" fill="#5c7a96"/><rect x="18" y="76" width="40" height="5" rx="2.5" fill="#5c7a96"/>
+          <rect x="22" y="100" width="52" height="20" rx="10" fill="#38bdf8" opacity=".75"/>
+          <rect x="10" y="130" width="64" height="30" rx="11" fill="#1d2e43"/>
+          <circle cx="24" cy="145" r="3" fill="#a3e635"><animate attributeName="opacity" values="1;.2;1" dur="1.2s" repeatCount="indefinite"/></circle>
+          <circle cx="36" cy="145" r="3" fill="#a3e635"><animate attributeName="opacity" values="1;.2;1" dur="1.2s" begin=".2s" repeatCount="indefinite"/></circle>
+          <circle cx="48" cy="145" r="3" fill="#a3e635"><animate attributeName="opacity" values="1;.2;1" dur="1.2s" begin=".4s" repeatCount="indefinite"/></circle>
+        </g>
+      </svg>
+      <div class="chip c1"><span class="dot" style="background:#a3e635"></span>Sleep 7h 42 <small>score 84</small></div>
+      <div class="chip c2"><span class="dot" style="background:#38bdf8"></span>10.2 km <small>4:48 /km</small></div>
+      <div class="chip c3"><span class="dot" style="background:#fb7185"></span>Resting HR 47</div>
+      <div class="chip c4"><span class="dot" style="background:#fbbf24"></span>Body Battery 86</div>
+    </div>
   </div>
+</header>
 
-  <h2 style="font-size:19px;margin:22px 0 0">Option 1: the Claude Skill</h2>
-
-  <div class="card trust">
-    <h2>🔒 Your key never leaves this phone</h2>
-    <p style="margin:0">This page has no server and a security rule that blocks it from sending anything over the internet. It builds your skill file right here. <b>Try it:</b> turn on airplane mode before step 2. It still works.</p>
+<section id="demo">
+  <div class="wrap demo">
+    <div class="phone" aria-live="polite">
+      <div class="phone-top"><b>Claude</b><span class="tool">⚡ reading Garmin</span></div>
+      <div class="bubble me" id="q"></div>
+      <div class="mini-row" id="tools"></div>
+      <div class="bubble ai" id="a"><span class="caret"></span></div>
+    </div>
+    <div>
+      <p class="kicker">What it feels like</p>
+      <h2>Ask like you'd ask a coach.</h2>
+      <p class="lead">Claude pulls the numbers from your Garmin account and answers in plain words, compared with your own normal, not some average person's. Tap a question:</p>
+      <div class="asks" id="asks"></div>
+      <p class="small">Example answers with sample numbers. Yours come from your own data.</p>
+    </div>
   </div>
+</section>
 
-  <div class="card">
-    <p class="step"><span class="num">1</span><b>Get your Garmin key</b></p>
-    <ol>
-      <li>Open <a href="https://connect.garmin.com/app/settings/personalApiToken" target="_blank" rel="noopener noreferrer">Garmin Connect → Settings → Personal API Key</a> and sign in.</li>
-      <li>Tap <b>Create</b>. Pick how long it lasts (30 days is the safest; 1 year is the least hassle).</li>
-      <li>Copy the key. Garmin shows it only once.</li>
-    </ol>
+<section id="setup" style="padding-top:20px">
+  <div class="wrap">
+    <p class="kicker" style="text-align:center">Set it up</p>
+    <h2 style="text-align:center">Pick your way in</h2>
+    <div class="switch" role="tablist" id="switch" data-on="1">
+      <span class="knob"></span>
+      <button role="tab" id="t1" aria-controls="p1" aria-selected="true"><b>⚡ Quick skill</b><small>3 min · Claude Pro/Max</small></button>
+      <button role="tab" id="t2" aria-controls="p2" aria-selected="false"><b>🛰️ Own connector</b><small>10 min · free plan & ChatGPT</small></button>
+    </div>
+
+    <!-- ---------- option 1 ---------- -->
+    <div class="panel" id="p1" role="tabpanel" aria-labelledby="t1">
+      <div class="facts"><span class="fact">✅ Nothing to sign up for</span><span class="fact">💳 Claude Pro or Max</span><span class="fact">📡 Fetches live when you ask</span></div>
+      <div class="steps">
+        <div class="step"><span class="num">1</span><div class="box"><span class="time">1 min</span><h3>Get your Garmin key</h3>
+          <ol><li>Open <a href="https://connect.garmin.com/app/settings/personalApiToken" target="_blank" rel="noopener noreferrer">Garmin Connect → Settings → Personal API Key</a> and sign in.</li>
+          <li>Tap <b>Create</b>. Pick how long it lasts (30 days is safest, 1 year is least hassle).</li><li>Copy the key. Garmin shows it only once.</li></ol></div></div>
+
+        <div class="step"><span class="num">2</span><div class="box"><span class="time">30 sec</span><h3>Make your skill</h3>
+          <div class="shield"><span>🔒</span><div><b>Your key never leaves this phone.</b> This page has a security rule that blocks it from sending anything online; it builds the file right here. Try it: switch on <b>airplane mode</b> first. It still works.</div></div>
+          <label for="key">Paste your Garmin Personal API key</label>
+          <div class="row"><input id="key" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="your key"><button class="light" id="show" type="button">Show</button></div>
+          <button class="btn wide" id="make" type="button">⬇ Download my skill</button>
+          <div class="msg" id="msg" role="status"></div>
+          <p class="small">You get <b>my-garmin-data.zip</b>. Keep it private: it contains your key. Nothing is saved on this page.</p></div></div>
+
+        <div class="step"><span class="num">3</span><div class="box"><span class="time">1 min</span><h3>Add it to Claude <span class="small">(once, at claude.ai in a browser)</span></h3>
+          <ol><li><b>Settings → Capabilities</b>: turn on <b>Code execution and file creation</b>.</li>
+          <li>Just below it, turn on network access (called <b>Allow network egress</b>, <b>Network access</b> or <b>Domain allowlist</b>), choose specific domains, and add only:
+            <div class="copy"><span class="mono">personal.connectapi.garmin.com</span><button class="light" id="copyDomain" type="button">Copy</button></div>
+            <span class="small">Don't pick "All domains". With only Garmin allowed, Claude itself blocks the skill from sending your data anywhere else.</span></li>
+          <li><b>Skills → Upload skill</b> → choose <b>my-garmin-data.zip</b>.</li></ol></div></div>
+
+        <div class="step"><span class="num">4</span><div class="box"><h3>Ask away 🎉</h3><p style="margin:0">In the Claude app or on the web: <i>"Am I recovered enough to run hard today?"</i></p></div></div>
+      </div>
+    </div>
+
+    <!-- ---------- option 2 ---------- -->
+    <div class="panel" id="p2" role="tabpanel" aria-labelledby="t2" hidden>
+      <div class="facts"><span class="fact">✅ Claude free plan</span><span class="fact">🤖 ChatGPT (beta)</span><span class="fact">📚 Keeps a full year</span><span class="fact">🔄 Updates every 30 min</span></div>
+      <div class="steps">
+        <div class="step"><span class="num">1</span><div class="box"><span class="time">1 min</span><h3>Get your Garmin key</h3>
+          <p style="margin:0">Open <a href="https://connect.garmin.com/app/settings/personalApiToken" target="_blank" rel="noopener noreferrer">Garmin Connect → Settings → Personal API Key</a> → <b>Create</b> → copy it.</p></div></div>
+
+        <div class="step"><span class="num">2</span><div class="box"><span class="time">4 min</span><h3>Deploy your own copy</h3>
+          <a class="deploy" href="https://deploy.workers.cloudflare.com/?url=https://github.com/abdullahmsalama/garmin-claude/tree/main/connector" target="_blank" rel="noopener noreferrer">☁️ Deploy to Cloudflare</a>
+          <ol><li>Sign in to <b>Cloudflare</b> and <b>GitHub</b> (both free; Cloudflare keeps a copy of the code in your GitHub).</li>
+          <li>When it asks for <b>OWNER_PASSWORD</b>, replace the example with your own: <b>12+ characters</b>, a short sentence is great.</li>
+          <li>Tap <b>Deploy</b>. You get your own link, ending in <span class="mono">.workers.dev</span></li></ol></div></div>
+
+        <div class="step"><span class="num">3</span><div class="box"><span class="time">1 min</span><h3>Connect Garmin</h3>
+          <p style="margin:0">Open your new link, log in with your password, paste your Garmin key. You'll see <b>🎉 Connected</b>, and your past year starts loading in the background.</p></div></div>
+
+        <div class="step"><span class="num">4</span><div class="box"><span class="time">2 min</span><h3>Add it to Claude</h3>
+          <ol><li>At <b>claude.ai</b> (browser): <b>Settings → Connectors → Add custom connector</b>.</li>
+          <li>Name it <b>Garmin</b>, paste the link your page shows, tap <b>Connect</b>, type your password, <b>Allow</b>.</li>
+          <li>In any chat on your phone: <b>＋ → Connectors → Garmin</b>, and ask.</li></ol>
+          <p class="small">ChatGPT: the same link works as a developer-mode connector (paid plans, web, beta).</p></div></div>
+
+        <div class="step"><span class="num">🔐</span><div class="box"><h3>Yours alone</h3><p style="margin:0">It runs in <b>your</b> Cloudflare account. Your key and tokens are stored encrypted, and Claude can only connect after your password. <a href="https://github.com/abdullahmsalama/garmin-claude/tree/main/connector#readme" target="_blank" rel="noopener noreferrer">Full guide and code →</a></p></div></div>
+      </div>
+    </div>
   </div>
+</section>
 
-  <div class="card">
-    <p class="step"><span class="num">2</span><b>Make your skill</b></p>
-    <label for="key">Paste your Garmin Personal API key</label>
-    <div class="row"><input id="key" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="your key"><button class="light" id="show" type="button">Show</button></div>
-    <button class="wide" id="make" type="button">Download my skill</button>
-    <div class="msg" id="msg" role="status"></div>
-    <p class="small">You get <b>my-garmin-data.zip</b>. Keep it private: it contains your key. This page doesn't save anything.</p>
+<section style="padding-top:20px">
+  <div class="wrap">
+    <p class="kicker" style="text-align:center">Why you can trust it</p>
+    <h2 style="text-align:center;margin-bottom:22px">Private by design, not by promise</h2>
+    <div class="trust">
+      <div class="t"><div class="ic">✈️</div><b>Works in airplane mode</b><p>This page can't send anything. Your key is packed into the file on your own phone.</p></div>
+      <div class="t"><div class="ic">🧱</div><b>Locked to Garmin</b><p>You allow only Garmin's address in Claude, so the code physically can't send data elsewhere.</p></div>
+      <div class="t"><div class="ic">👀</div><b>Open source</b><p>One <a href="https://github.com/abdullahmsalama/garmin-claude/blob/main/skill/my-garmin-data/scripts/garmin.py" target="_blank" rel="noopener noreferrer">short Python file</a>. Or drop the zip into Claude and ask it what the code does.</p></div>
+      <div class="t"><div class="ic">📖</div><b>Read-only</b><p>Garmin's Personal API can't change your account or send anything to your watch.</p></div>
+    </div>
+    <p class="small" style="text-align:center;margin-top:18px">Changed your mind? Delete the key in Garmin Connect, and remove the skill or connector in Claude.</p>
   </div>
+</section>
 
-  <div class="card">
-    <p class="step"><span class="num">3</span><b>Add it to Claude</b> (once)</p>
-    <p class="small" style="margin-top:0">Do this at <b>claude.ai</b> in your browser. These settings aren't in the phone app yet.</p>
-    <ol>
-      <li><b>Settings → Capabilities</b>: turn on <b>Code execution and file creation</b>.</li>
-      <li>Just below it, turn on network access (it may be called <b>Allow network egress</b>, <b>Network access</b> or <b>Domain allowlist</b>), choose specific domains, and add only:
-        <div class="copy"><span class="mono">personal.connectapi.garmin.com</span><button class="light" id="copyDomain" type="button">Copy</button></div>
-        <span class="small">Don't choose "All domains". With only Garmin allowed, the skill can't send your data anywhere else, and Claude enforces that.</span></li>
-      <li><b>Settings → Capabilities → Skills</b>: tap <b>Upload skill</b> and choose <b>my-garmin-data.zip</b>.</li>
-    </ol>
-  </div>
+<footer class="wrap">Free and open source · <a href="https://github.com/abdullahmsalama/garmin-claude" target="_blank" rel="noopener noreferrer">GitHub</a> · Not affiliated with or endorsed by Garmin, Anthropic or OpenAI · Not medical advice<br>Skill v{{VERSION}} · zip fingerprint (without your key) <span class="mono">{{ZIP_SHA}}</span></footer>
 
-  <div class="card">
-    <p class="step"><span class="num">4</span><b>Ask away</b>, in the Claude app or on the web</p>
-    <ul>
-      <li>"Am I recovered enough to run hard today?"</li>
-      <li>"How did my sleep this week compare to last week?"</li>
-      <li>"Look at my last 4 weeks of running and build next week's plan."</li>
-      <li>"Is my resting heart rate trending up?"</li>
-    </ul>
-  </div>
-
-  <div class="card">
-    <h2 style="font-size:17px;margin:0 0 8px">What it does, and what it doesn't</h2>
-    <ul class="yes"><li>Reads your activities, sleep, HRV, stress, Body Battery, weight, HR zones and fitness age from Garmin's official Personal API</li><li>Runs inside your own Claude account. The code is open: <a href="https://github.com/abdullahmsalama/garmin-claude/blob/main/skill/my-garmin-data/scripts/garmin.py" target="_blank" rel="noopener noreferrer">one short Python file on GitHub</a></li></ul>
-    <ul class="no"><li>No accounts, no server, no tracking, nothing collected or sold</li><li>Can't change anything in Garmin or send anything to your watch (the API is read-only)</li></ul>
-    <p class="small">Want to check before you trust it? Upload the zip into a Claude chat first and ask: <i>"Does this send my data anywhere except Garmin? Can it change anything?"</i></p>
-    <p class="small">Changed your mind? Delete the key in Garmin Connect → Settings → Personal API Key, and remove the skill in Claude.</p>
-  </div>
-
-  <footer>Not affiliated with or endorsed by Garmin or Anthropic. Not medical advice. Skill version {{VERSION}} · zip fingerprint (without your key) <span class="mono">{{ZIP_SHA}}</span></footer>
-</main>
 <script>{{SCRIPT}}</script>
 </body>
 </html>
