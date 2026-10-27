@@ -9,7 +9,7 @@ Your runs, sleep, HRV, stress, Body Battery and weight, answered by Claude, on y
 |---|---|---|
 | Setup | ~3 min, nothing to sign up for | ~10 min, free Cloudflare + GitHub accounts |
 | Claude plan | Pro or Max | Free works |
-| ChatGPT | No | Yes (developer mode, paid, beta) |
+| ChatGPT | No | Paid plans (developer mode, beta) |
 | History | Fetched live when you ask | A full year, kept up to date every 30 min |
 | Where it runs | Inside your Claude account | In your own Cloudflare account |
 | Guide | [skill/](skill/) | [connector/](connector/) |
