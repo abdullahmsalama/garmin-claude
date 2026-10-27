@@ -13,9 +13,17 @@ function pick(n, push) {
 }
 $('t1').onclick = () => pick(1, true);
 $('t2').onclick = () => pick(2, true);
-const fromHash = () => { if (/connector|option-?2/.test(location.hash)) { pick(2); $('setup').scrollIntoView(); } else if (/skill|option-?1/.test(location.hash)) pick(1); };
+const fromHash = () => { if (/connector|option-?2|chatgpt/.test(location.hash)) { pick(2); pickAi(/chatgpt/.test(location.hash)); $('setup').scrollIntoView(); } else if (/skill|option-?1/.test(location.hash)) pick(1); };
 fromHash();
 addEventListener('hashchange', fromHash);
+
+// Option 2, step 4: Claude or ChatGPT steps (#chatgpt opens straight on ChatGPT).
+function pickAi(chatgpt) {
+  $('ai1').setAttribute('aria-selected', String(!chatgpt)); $('ai2').setAttribute('aria-selected', String(chatgpt));
+  $('aiClaude').hidden = chatgpt; $('aiChatgpt').hidden = !chatgpt;
+}
+$('ai1').onclick = () => pickAi(false);
+$('ai2').onclick = () => pickAi(true);
 
 // ---------- chat demo (sample numbers) ----------
 const DEMOS = [

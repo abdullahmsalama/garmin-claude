@@ -15,6 +15,13 @@ Not affiliated with Garmin, Anthropic or OpenAI. Not medical advice.
 4. **Add to Claude:** in claude.ai (browser) → Settings → Connectors → Add custom connector → paste the link the page shows → Connect → type your password → Allow.
 5. **Ask** in the Claude app: "Am I recovered enough to run hard today?"
 
+### ChatGPT instead of Claude (beta)
+Needs a paid ChatGPT plan; OpenAI moves these menus around, so look for "Connectors", "Apps" or "Developer mode".
+1. At chatgpt.com (browser): Settings → Apps & Connectors → Advanced settings → turn on **Developer mode**.
+2. Apps & Connectors → **Create**: name **Garmin**, MCP server URL = the link your page shows, authentication **OAuth**, tick that you trust it, **Create**.
+3. Your page opens: type your password → **Allow**.
+4. New chat → ＋ → Developer mode → **Garmin**, and ask.
+
 ## Why it's private
 - It runs in your Cloudflare account. Nobody else, including the author of this code, can reach your data or key.
 - Your Garmin key and Garmin's access token are stored **encrypted** (AES-GCM) in your own database.

@@ -122,6 +122,9 @@ button.wide { width: 100%; margin-top: 12px; font-size: 17px; padding: 15px; }
 .shield span { font-size: 22px; }
 .deploy { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 800; padding: 14px 20px; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #f6821f, #fbad41); box-shadow: 0 12px 26px -12px rgba(246,130,31,.9); margin: 6px 0; }
 
+.mini-switch { display: inline-flex; padding: 4px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); margin: 2px 0 8px; }
+.mini-switch button { border: 0; background: none; font: inherit; font-weight: 700; font-size: 14px; color: var(--muted); padding: 7px 16px; border-radius: 9px; cursor: pointer; }
+.mini-switch button[aria-selected="true"] { background: linear-gradient(135deg, var(--teal), var(--cyan)); color: #04211d; }
 /* trust grid */
 .trust { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 .t { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
@@ -268,7 +271,7 @@ footer { padding: 30px 0 calc(40px + env(safe-area-inset-bottom)); font-size: 13
 
     <!-- ---------- option 2 ---------- -->
     <div class="panel" id="p2" role="tabpanel" aria-labelledby="t2" hidden>
-      <div class="facts"><span class="fact">✅ Claude free plan</span><span class="fact">🤖 ChatGPT (beta)</span><span class="fact">📚 Keeps a full year</span><span class="fact">🔄 Updates every 30 min</span></div>
+      <div class="facts"><span class="fact">✅ Claude free plan</span><span class="fact">🤖 Claude or ChatGPT</span><span class="fact">📚 Keeps a full year</span><span class="fact">🔄 Updates every 30 min</span></div>
       <div class="steps">
         <div class="step"><span class="num">1</span><div class="box"><span class="time">1 min</span><h3>Get your Garmin key</h3>
           <p style="margin:0">Open <a href="https://connect.garmin.com/app/settings/personalApiToken" target="_blank" rel="noopener noreferrer">Garmin Connect → Settings → Personal API Key</a> → <b>Create</b> → copy it.</p></div></div>
@@ -282,11 +285,22 @@ footer { padding: 30px 0 calc(40px + env(safe-area-inset-bottom)); font-size: 13
         <div class="step"><span class="num">3</span><div class="box"><span class="time">1 min</span><h3>Connect Garmin</h3>
           <p style="margin:0">Open your new link, log in with your password, paste your Garmin key. You'll see <b>🎉 Connected</b>, and your past year starts loading in the background.</p></div></div>
 
-        <div class="step"><span class="num">4</span><div class="box"><span class="time">2 min</span><h3>Add it to Claude</h3>
-          <ol><li>At <b>claude.ai</b> (browser): <b>Settings → Connectors → Add custom connector</b>.</li>
-          <li>Name it <b>Garmin</b>, paste the link your page shows, tap <b>Connect</b>, type your password, <b>Allow</b>.</li>
-          <li>In any chat on your phone: <b>＋ → Connectors → Garmin</b>, and ask.</li></ol>
-          <p class="small">ChatGPT: the same link works as a developer-mode connector (paid plans, web, beta).</p></div></div>
+        <div class="step"><span class="num">4</span><div class="box"><span class="time">2 min</span><h3>Add it to your AI</h3>
+          <div class="mini-switch" role="tablist"><button type="button" role="tab" id="ai1" aria-selected="true">Claude</button><button type="button" role="tab" id="ai2" aria-selected="false">ChatGPT</button></div>
+          <div id="aiClaude">
+            <ol><li>At <b>claude.ai</b> (in a browser, also fine on your phone): <b>Settings → Connectors → Add custom connector</b>.</li>
+            <li>Name it <b>Garmin</b>, paste the link your page shows, tap <b>Add</b>, then <b>Connect</b>.</li>
+            <li>Your page opens: type your password, tap <b>Allow</b>.</li>
+            <li>In any chat, also in the phone app: <b>＋ → Connectors → Garmin</b> on, and ask.</li></ol>
+            <p class="small">Works on Claude's free plan (1 custom connector).</p>
+          </div>
+          <div id="aiChatgpt" hidden>
+            <ol><li>At <b>chatgpt.com</b> in a browser: <b>Settings → Apps &amp; Connectors → Advanced settings</b> → turn on <b>Developer mode</b>.</li>
+            <li>Back in <b>Apps &amp; Connectors</b>, tap <b>Create</b>. Name it <b>Garmin</b>, paste the link your page shows as the <b>MCP server URL</b>, choose <b>OAuth</b> for authentication, tick that you trust it, and tap <b>Create</b>.</li>
+            <li>Your page opens: type your password, tap <b>Allow</b>.</li>
+            <li>In a new chat: <b>＋ → Developer mode → Garmin</b>, and ask.</li></ol>
+            <p class="small">⚠️ Beta: needs a paid ChatGPT plan, and OpenAI moves these menus around (look for "Connectors", "Apps" or "Developer mode"). Set it up on the web; whether it shows in ChatGPT's phone app depends on your plan.</p>
+          </div></div></div>
 
         <div class="step"><span class="num">🔐</span><div class="box"><h3>Yours alone</h3><p style="margin:0">It runs in <b>your</b> Cloudflare account. Your key and tokens are stored encrypted, and Claude can only connect after your password. <a href="https://github.com/abdullahmsalama/garmin-claude/tree/main/connector#readme" target="_blank" rel="noopener noreferrer">Full guide and code →</a></p></div></div>
       </div>
