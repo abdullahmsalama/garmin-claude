@@ -43,7 +43,8 @@ These download the workout's original file from Garmin and decode it here, so th
 | `day [--date YYYY-MM-DD] [--every 15]` | Everything about one day: all-day HR curve, overnight HRV readings, the Body Battery curve and what charged/drained it, SpO2, sleep in detail (stages, score parts, breathing, naps, need), the full daily summary, and that day's workouts. Times in the user's Garmin time zone. | today |
 | `records [--type running\|cycling]` | Best times (1 km, mile, 5k, 10k, half, marathon) from Garmin's fastest splits, with date and activity id, best in range and last 90 days, plus **estimated** race times (Riegel formula, not Garmin's predictions). Add `--from` for older years. | 1 year |
 | `trends [--type running] [--by week\|month]` | Per week or month: sessions, km, hours, training load, pace, HR, efficiency factor, pace at an easy HR (zone 2), cadence, stride, ground contact, vertical oscillation and ratio. `--type all`, `cycling`, `strength_training`… | 26 weeks |
-| `profile [--weeks 26]` | HR zones per sport (max HR, LTHR, floors), fitness age now and what drives it, resting HR by week, weight goal, units and training days. | 26 weeks |
+| `profile [--weeks 26]` | HR zones per sport (max HR, LTHR, floors), fitness age now and what drives it, resting HR by week, **highest HR seen in workouts per month** (sensor spikes left out), **fitness age by month** (only if Garmin keeps it for this account), weight goal, units and training days. | 26 weeks |
+| `scan [--runs 30] [--type running\|cycling]` | **Best efforts found inside your recent runs** (400 m, 1k, mile, 3k, 5k, 10k, 15k, half, marathon; for rides 5-100 km), by analysing each run's file. Slow: about 1-2 s per run, stops after ~2.5 min or if Garmin asks it to slow down, and says so. Up to 60 runs. | last year |
 
 Add `--from YYYY-MM-DD --to YYYY-MM-DD` for other dates (up to one year back; `records` and `trends` up to ten). Long ranges take a few seconds because Garmin limits each request to about a month.
 
@@ -53,8 +54,9 @@ Add `--from YYYY-MM-DD --to YYYY-MM-DD` for other dates (up to one year back; `r
 - For readiness questions combine sleep, HRV status, resting HR trend, Body Battery and recent training load.
 - Units: distance km, pace min/km, time minutes. Convert to the user's preferred units if they ask.
 - Questions about splits, laps, pacing, pauses, HR drift or "was it a clean effort" → `splits` / `analyze`, never `activity`'s split_summaries.
-- Best efforts like 400 m, 3k or 15k come from `analyze <id>` (inside one workout); `records` only has Garmin's 1k, mile, 5k, 10k, half and marathon.
-- Not in Garmin's Personal API, so you can't get them: Training Readiness, Training Status, VO2 max history, FTP, Endurance/Hill Score, Garmin's own race predictions. This skill keeps nothing between chats, so there is no history of LTHR, max HR or fitness age either (only today's values).
+- Best efforts like 400 m, 3k or 15k: one workout → `analyze <id>`; "my best 3k lately" → `scan` (tell the user it takes about a minute first). `records` only has Garmin's 1k, mile, 5k, 10k, half and marathon, but covers every activity in the range. `scan` only counts the runs it scanned: say so.
+- "Max HR" from `profile`: `max_hr_seen_by_month` is the highest HR reached in a workout, not a true max (that's higher if they never went all-out). Mention ignored spikes if there are any.
+- Not in Garmin's Personal API, so you can't get them: Training Readiness, Training Status, VO2 max history, FTP, Endurance/Hill Score, Garmin's own race predictions. This skill keeps nothing between chats: LTHR (threshold HR) history isn't available at all (Garmin only gives today's value), and max HR and fitness age history are rebuilt from Garmin's own data as described above. For a saved history over time, point the user to option 2 of the guide (their own connector).
 - Garmin's Personal API is read-only: you can't create workouts, send anything to the watch, or change Garmin data. Say so if asked.
 - This is not medical advice. For pain, illness, chest symptoms or unusual heart readings, suggest seeing a doctor.
 

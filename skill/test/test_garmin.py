@@ -290,6 +290,24 @@ class Commands(unittest.TestCase):
         self.assertEqual(p["fitness_age_now"]["fitness_age"], 31.4)
         self.assertEqual(len(p["resting_hr_by_week"]), 2)
 
+    def test_scan_and_rebuilt_history(self):
+        sc = self.cmd("scan", "--from", "2026-10-01", "--to", "2026-10-28")
+        self.assertEqual(sc["activities_scanned"], 1)
+        self.assertEqual(sc["best_efforts"]["5k"]["time"], "25:00")
+        self.assertEqual(sc["best_efforts"]["400m"]["date"], "2026-10-20")
+        self.assertIsNone(sc["stopped_early"])
+        p = self.cmd("profile", "--to", "2026-10-28", "--weeks", "8")
+        self.assertIsNone(p["fitness_age_by_month"])  # the fake gives the same value for every date: no fake history
+        self.assertIn("same fitness age", p["fitness_age_history_note"])
+
+    def test_max_hr_seen_ignores_spikes(self):
+        sys.path.insert(0, SCRIPTS)
+        import garmin
+        acts = [{"maxHR": v, "startTimeLocal": d, "activityId": i} for i, (v, d) in enumerate([(184, "2026-08-02"), (181, "2026-08-20"), (186, "2026-09-05"), (207, "2026-09-12"), (179, "2026-10-01")])]
+        seen, spikes = garmin.max_hr_seen(acts)
+        self.assertEqual([x["bpm"] for x in seen], [184, 186, 179])
+        self.assertEqual(spikes, [207])
+
     def test_missing_id(self):
         p = subprocess.run([sys.executable, os.path.join(SCRIPTS, "garmin.py"), "splits"], env=self.env, capture_output=True, text=True)
         self.assertIn("activity id", json.loads(p.stdout)["error"])

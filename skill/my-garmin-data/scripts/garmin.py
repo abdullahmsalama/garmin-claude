@@ -31,7 +31,7 @@ import urllib.parse
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from analysis import ANALYSIS_VERSION, analyze, chart_extras, downsample, fmt_time, pace_str  # noqa: E402
+from analysis import ANALYSIS_VERSION, RIDE_DISTANCES, RUN_DISTANCES, analyze, chart_extras, downsample, fmt_time, pace_str  # noqa: E402
 from fit import FitError, decode_fit, fit_from_download  # noqa: E402
 
 BASE = os.environ.get("GARMIN_BASE", "https://personal.connectapi.garmin.com")  # override only for tests
@@ -124,7 +124,7 @@ def get_bytes(path, retried=False):
     if status == 404:
         raise GarminError("Garmin has no file for this activity (manual entries have none).")
     if status >= 400:
-        raise GarminError(f"Garmin activity file answered {status}.")
+        raise GarminError(f"Garmin activity file answered {status}.", status)
     return body
 
 
@@ -782,12 +782,85 @@ def profile(weeks, to):
     if x:
         gr = x.get("weightGoal") or x.get("goalValue")
         goal = clean({"low_kg": g_kg(x.get("lowWeightGoalInGrams")), "high_kg": g_kg(x.get("highWeightGoalInGrams")), "target_kg": g_kg(gr) if isinstance(gr, (int, float)) and gr > 1000 else None}) or None
-    return {"hr_zones_now": zones, "fitness_age_now": fa or None,
+    acts = raw_activities(frm, to)
+    seen, spikes = max_hr_seen(acts)
+    fa_hist, fa_note = fitness_age_history(min(12, max(2, weeks // 4)), to)
+    return {"hr_zones_now": zones, "fitness_age_now": fa or None, "fitness_age_by_month": fa_hist, "fitness_age_history_note": fa_note,
+            "max_hr_seen_by_month": seen, "max_hr_spikes_ignored_bpm": spikes or None,
+            "max_hr_note": "Highest heart rate reached in a workout each month, not your true max HR (that's only higher if you never went all-out). Isolated sensor spikes are left out.",
             "resting_hr_by_week": [{"week_of": k, "avg_bpm": round(sum(v) / len(v)), "lowest_bpm": min(v)} for k, v in sorted(weeks_hr.items())],
             "weight_goal": goal, "settings": clean({"units": low(st.get("measurementSystem")), "time_zone": st.get("timeZone"),
                                                     "training_days": st.get("availableTrainingDays"), "long_training_days": st.get("preferredLongTrainingDays")}) or None,
-            "history_note": "This skill reads Garmin live and keeps nothing, so there is no history of LTHR, max HR or fitness age: only today's values. Resting HR by week comes from the daily summaries.",
+            "history_note": "This skill reads Garmin live and keeps nothing. Rebuilt from Garmin's own data: resting HR by week, the highest HR seen in workouts per month, and fitness age by month (if Garmin keeps it). "
+                            "Threshold HR (LTHR) history isn't available: Garmin's Personal API only gives today's value. For a saved history over time, use option 2 (your own connector).",
             "not_available": "VO2max history, Training Status, Training Readiness, FTP, Endurance and Hill Score are not in Garmin's Personal API."}
+
+
+def max_hr_seen(acts):
+    """Highest heart rate reached in workouts, per month. An isolated spike (wrist sensors can lock onto
+    your step rate) more than 8 bpm above every other workout in the period is left out."""
+    vals = sorted({a["maxHR"] for a in acts if isinstance(a.get("maxHR"), (int, float)) and 100 <= a["maxHR"] <= 230}, reverse=True)
+    spikes = []
+    while len(vals) >= 2 and vals[0] - vals[1] > 8:
+        spikes.append(vals.pop(0))
+    months = {}
+    for a in acts:
+        v, d = a.get("maxHR"), (a.get("startTimeLocal") or "")[:7]
+        if d and isinstance(v, (int, float)) and 100 <= v <= 230 and v not in spikes and v > months.get(d, {}).get("bpm", 0):
+            months[d] = {"month": d, "bpm": round(v), "id": str(a.get("activityId")), "name": a.get("activityName")}
+    return [months[k] for k in sorted(months)], [round(x) for x in spikes]
+
+
+def fitness_age_history(months, to):
+    """Fitness age on the 1st of each past month. If Garmin gives the same answer for every date, it
+    doesn't keep history for this account, and nothing is shown (better than a flat fake line)."""
+    out, d = [], day(to).replace(day=1)
+    for _ in range(months):
+        f = try_get(f"/fitnessage-service/fitnessage/v2/{d.isoformat()}")
+        f = (f[0] if f else {}) if isinstance(f, list) else (f if isinstance(f, dict) and "__error" not in f else {})
+        if f.get("fitnessAge") is not None:
+            out.append({"date": d.isoformat(), "fitness_age": r1(f.get("fitnessAge")), "achievable": r1(f.get("achievableFitnessAge"))})
+        d = (d - dt.timedelta(days=1)).replace(day=1)
+        time.sleep(0.2)
+    out.reverse()
+    if len(out) >= 2 and len({x["fitness_age"] for x in out}) == 1:
+        return None, "Garmin returned the same fitness age for every past date, so it doesn't seem to keep a history for your account."
+    return out or None, None if out else "Garmin gave no fitness age for past dates."
+
+
+def scan(kind, frm, to, n):
+    """Best efforts (400 m to marathon) found inside your most recent runs, by analysing each run's file.
+    Slow on purpose: a short pause between downloads, and it stops early (keeping what it found) if Garmin
+    asks it to slow down."""
+    cycling = bool(re.search("cycl|bik|ride", kind or ""))
+    acts = [a for a in raw_activities(frm, to) if (re.search("cycl|bik|ride", type_of(a)) if cycling else FOOT.search(type_of(a)))]
+    acts = sorted(acts, key=lambda a: a.get("startTimeLocal") or "", reverse=True)[:n]
+    best, done, skipped, stopped = {}, 0, [], None
+    start = time.time()
+    for a in acts:
+        if time.time() - start > 150:
+            stopped = "Stopped after about 2.5 minutes to keep the chat responsive: ask again with --to set before the oldest run scanned to continue."
+            break
+        aid = str(a.get("activityId"))
+        try:
+            x = activity_analysis(aid)
+        except GarminError as e:
+            if len(e.args) > 1 and e.args[1] == 429:
+                stopped = "Garmin asked to slow down (too many requests), so the scan stopped early. Try again in a few minutes."
+                break
+            skipped.append(aid)
+            continue
+        done += 1
+        for name, e in (x.get("best_efforts") or {}).items():
+            if name not in best or e["time_s"] < best[name]["time_s"]:
+                best[name] = {**e, "date": (a.get("startTimeLocal") or "")[:10], "id": aid, "name": a.get("activityName")}
+        time.sleep(0.4)
+    order = [n for _, n in (RIDE_DISTANCES if cycling else RUN_DISTANCES)]
+    return {"type": "cycling" if cycling else "running", "activities_scanned": done, "of": len(acts),
+            "newest": (acts[0].get("startTimeLocal") or "")[:10] if acts else None, "oldest_scanned": (acts[max(0, done - 1)].get("startTimeLocal") or "")[:10] if done else None,
+            "best_efforts": {k: best[k] for k in order if k in best}, "skipped_no_file": skipped or None, "stopped_early": stopped,
+            "note": "Fastest stretch of each distance inside these runs (moving time, pauses left out), from the watch files. Only the runs scanned count: "
+                    "older bests are missed unless you scan further back. Garmin's own records (1 km to marathon, all activities) are in the records command."}
 
 
 def strength(aid, frm, to):
@@ -892,6 +965,9 @@ def run(args):
     if c == "trends":
         frm, to = date_range(args, 182, max_days=3660)
         return trends(args.type, frm, to, args.by)
+    if c == "scan":
+        frm, to = date_range(args, 365, max_days=3660)
+        return scan(args.type, frm, to, max(1, min(60, args.runs or 30)))
     if c == "profile":
         return profile(max(4, min(104, args.weeks or 26)), args.to or dt.date.today().isoformat())
     if c == "overview":
@@ -913,7 +989,7 @@ def run(args):
 def main():
     p = argparse.ArgumentParser(description="Read your own Garmin Connect data (read-only).")
     p.add_argument("command", choices=["check", "overview", "activities", "activity", "daily", "sleep", "hrv", "body-battery", "weight", "hr-zones", "fitness-age",
-                                       "splits", "analyze", "streams", "strength", "day", "records", "trends", "profile"])
+                                       "splits", "analyze", "streams", "strength", "day", "records", "trends", "profile", "scan"])
     p.add_argument("id", nargs="?", help="activity id (activity, splits, analyze, streams, strength)")
     p.add_argument("--from", dest="frm", help="YYYY-MM-DD")
     p.add_argument("--to", help="YYYY-MM-DD (default today)")
@@ -923,6 +999,7 @@ def main():
     p.add_argument("--points", type=int, help="streams: rows wanted, 10-600 (default 120)")
     p.add_argument("--channels", help="streams: e.g. hr,pace,cadence,power,altitude,grade_adjusted_pace (default: all recorded)")
     p.add_argument("--by", choices=["week", "month"], help="trends: group by week (default) or month")
+    p.add_argument("--runs", type=int, help="scan: how many recent runs (or rides) to analyse, 1-60 (default 30)")
     p.add_argument("--weeks", type=int, help="profile: weeks of resting-HR history, 4-104 (default 26)")
     args = p.parse_args()
     if args.command in ("splits", "analyze", "streams") and not args.id:

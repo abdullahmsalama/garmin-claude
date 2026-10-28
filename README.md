@@ -12,6 +12,7 @@ Your runs (down to every km: splits, heart-rate drift, pauses, best efforts), st
 | ChatGPT | No | Paid plans (developer mode, beta) |
 | Inside each workout | Splits, streams, analysis, strength sets (from the activity file, live) | The same, worked out once and kept |
 | Records and trends | From the period you ask about | From your stored year |
+| History over time | Rebuilt live: resting HR by week, highest HR seen per month, fitness age by month (if Garmin keeps it); no threshold-HR history | Also saved every day from setup, including threshold HR |
 | History | Fetched live when you ask | A full year, kept up to date every 30 min |
 | Where it runs | Inside your Claude account | In your own Cloudflare account |
 | Guide | [skill/](skill/) | [connector/](connector/) |
