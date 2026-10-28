@@ -7,7 +7,32 @@ export const OWNER = 'owner'; // phase 1 has one user; the user_id column is rea
 const DAY = 864e5;
 export const iso = t => new Date(t).toISOString().slice(0, 10);
 export const addDays = (d, n) => iso(Date.parse(d) + n * DAY);
-const today = () => iso(Date.now() + DAY / 2); // a little ahead: you may be east of UTC
+
+// Your time zone: the one in your Garmin settings (saved once a day), else the TZ variable in
+// wrangler.jsonc, else UTC. Used for "today" and for every local clock time the tools show.
+const validZone = z => { try { return z && new Intl.DateTimeFormat('en-CA', { timeZone: z }) ? z : null; } catch { return null; } };
+const zoneCache = new WeakMap(); // per database, re-read every 10 minutes
+export async function timeZone(env) {
+  const c = zoneCache.get(env.DB);
+  if (c && Date.now() - c.at < 10 * 60000) return c.zone;
+  const zone = validZone(await getMeta(env, 'time_zone')) || validZone(env.TZ) || 'UTC';
+  zoneCache.set(env.DB, { zone, at: Date.now() });
+  return zone;
+}
+const fmts = new Map();
+const fmtIn = zone => fmts.get(zone) || fmts.set(zone, new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })).get(zone);
+// Epoch ms -> "YYYY-MM-DD HH:MM" in `zone`.
+export function localTime(zone, ms) {
+  if (ms == null || !isFinite(ms)) return null;
+  const p = Object.fromEntries(fmtIn(zone).formatToParts(new Date(ms)).map(x => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
+}
+export const today = async env => localTime(await timeZone(env), Date.now()).slice(0, 10);
+// Reads your time zone from Garmin's settings and keeps it.
+async function saveTimeZone(env, g) {
+  const z = validZone((await g.get(GARMIN.paths.settings).catch(() => null))?.timeZone);
+  if (z && z !== (await getMeta(env, 'time_zone'))) { await setMeta(env, 'time_zone', z); zoneCache.delete(env.DB); }
+}
 
 export async function log(env, kind, detail = '') {
   await env.DB.batch([
@@ -118,14 +143,19 @@ export async function pull(env, kind, from, to, g = garmin(env)) {
 // Recent data: the last few days of everything, plus HR zones and fitness age once a day.
 // Called by the cron every 30 min, and before a tool answers if the last sync is old.
 export async function syncRecent(env) {
-  const g = garmin(env), to = today(), counts = {}, errors = [];
+  const g = garmin(env);
+  if (!(await getMeta(env, 'time_zone'))) await saveTimeZone(env, g); // first sync: know "today" before fetching
+  const to = await today(env), counts = {}, errors = [];
   const plan = [['activities', 3], ['dailies', 3], ['sleep', 3], ['hrv', 3], ['bodyBattery', 2], ['weight', 14]];
   for (const [kind, days] of plan) {
     try { counts[kind] = await pull(env, kind, addDays(to, -(days - 1)), to, g); } catch (e) { errors.push(`${kind}: ${e.message}${e.body ? ` ${String(e.body).slice(0, 150)}` : ''}`); if (/API key|token request/.test(e.message)) break; }
   }
   if (!errors.length && (await getMeta(env, 'profile_day')) !== to) {
     try {
-      await save(env, 'hrZones', [await g.hrZones()].map(z => ({ list: z })), () => ({ id: 'current', day: to }));
+      const zones = await g.hrZones();
+      await save(env, 'hrZones', [zones].map(z => ({ list: z })), () => ({ id: 'current', day: to }));
+      if (Array.isArray(zones) && zones.length) await save(env, 'hrZonesHistory', [{ list: zones, date: to }], x => ({ id: x.date, day: x.date })); // LTHR / max HR history
+      await saveTimeZone(env, g);
       const fa = await g.fitnessAge(addDays(to, -1)).catch(() => null);
       if (fa) await save(env, 'fitnessAge', [{ value: fa, date: addDays(to, -1) }], x => ({ id: x.date, day: x.date }));
       await setMeta(env, 'profile_day', to);
@@ -150,14 +180,14 @@ export async function activityDetail(env, id) {
   const detail = await g.activity(id);
   const workouts = await g.get(GARMIN.paths.activityWorkouts(id)).catch(() => []);
   const data = { detail: slim(detail || {}), workouts };
-  const day = detail?.summaryDTO?.startTimeLocal?.slice(0, 10) || today();
+  const day = detail?.summaryDTO?.startTimeLocal?.slice(0, 10) || await today(env);
   await save(env, 'activityDetail', [data], () => ({ id: String(id), day }));
   return data;
 }
 
 // ---------- history ----------
 export async function queueHistory(env, days) {
-  const to = today(), first = addDays(to, -(days - 1));
+  const to = await today(env), first = addDays(to, -(days - 1));
   await env.DB.prepare("DELETE FROM jobs WHERE status IN ('queued', 'retry')").run();
   const stmts = [];
   for (const [kind, chunk] of Object.entries(GARMIN.chunkDays)) {

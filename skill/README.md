@@ -1,6 +1,6 @@
 # Garmin data for Claude (skill)
 
-Ask Claude about your own Garmin data (runs, sleep, HRV, stress, Body Battery, weight) from the Claude app on your phone. No server and no accounts: it's a Claude Skill that reads Garmin's official, read-only **Personal API** with your own key.
+Ask Claude about your own Garmin data (runs with per-km splits and analysis, strength sets, sleep, HRV, stress, Body Battery, weight, records and trends) from the Claude app on your phone. No server and no accounts: it's a Claude Skill that reads Garmin's official, read-only **Personal API** with your own key.
 
 Not affiliated with Garmin or Anthropic. Not medical advice.
 
@@ -18,7 +18,7 @@ Not affiliated with Garmin or Anthropic. Not medical advice.
 | Worry | Answer, and how to check it |
 |---|---|
 | The page steals my key | The page's Content-Security-Policy is `connect-src 'none'`: the browser blocks it from contacting any server. It builds the zip on your device. Check: turn on airplane mode and it still works; or view the source. |
-| The code sends my data somewhere | You allow only `personal.connectapi.garmin.com` in Claude, so Claude's sandbox blocks every other address. The script is one readable Python file (`my-garmin-data/scripts/garmin.py`) with no dependencies. |
+| The code sends my data somewhere | You allow only `personal.connectapi.garmin.com` in Claude, so Claude's sandbox blocks every other address. The scripts are three readable Python files (`my-garmin-data/scripts/`: `garmin.py` talks to Garmin, `fit.py` and `analysis.py` decode and analyse workout files offline) with no dependencies. |
 | It changes my Garmin account | Garmin's Personal API is read-only. The script only makes GET requests (plus the token exchange). |
 | The download isn't the published code | `node build.mjs` rebuilds the zip and page from this repo and prints SHA-256 fingerprints; they match `dist/SHA256SUMS` byte for byte (fixed timestamps, sorted files). |
 | I change my mind | Delete the key in Garmin Connect, and remove the skill in Claude. |
@@ -26,7 +26,8 @@ Not affiliated with Garmin or Anthropic. Not medical advice.
 Your key sits inside the skill in your own Claude account; the script never prints it, and the skill tells Claude never to reveal it.
 
 ## Project layout
-- `my-garmin-data/`: the skill (`SKILL.md`, `scripts/garmin.py`, `key.txt` placeholder)
+- `my-garmin-data/`: the skill (`SKILL.md`, `scripts/garmin.py` + `fit.py` + `analysis.py`, `key.txt` placeholder)
+- `test/`: tests with synthetic workout files and a fake Garmin server (`python3 -m unittest discover skill/test`)
 - `maker/`: the skill maker page (`page.html`, `page.js`) and the tiny zip writer (`zip.js`) shared with the build
 - `build.mjs`: builds `dist/` (zip, page, checksums). `VERSION` holds the version.
 

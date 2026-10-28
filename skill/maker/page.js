@@ -33,6 +33,10 @@ const DEMOS = [
     a: 'Better. You averaged [7 h 18] a night, [26 min] more than last week, with [1 h 31] of deep sleep. Your best night was Thursday (score [88]). Tuesday was short at [5 h 50], after your late run.' },
   { icon: '🏃', q: 'Build next week\'s plan from my last 4 weeks.', tools: ['activities', 'training'],
     a: 'You\'ve run [32–38 km] a week with one long run of [16–18 km]. Next week: Mon rest, Tue [8 km] easy, Wed [3×10 min] tempo at [4:35/km], Thu [6 km] recovery, Sat long run [19 km], Sun [5 km] shake-out. That\'s [40 km], a safe +8%.' },
+  { icon: '⏱️', q: 'Break down my last 5K, km by km. Was it even?', tools: ['activities', 'splits', 'analyze'],
+    a: 'Nearly. Your km were [4:52], [4:49], [4:47], [4:46] and [4:41]: a negative split, fastest at the end. No pauses, so the [24:01] is a clean effort. Heart rate drifted [4%] in the second half, normal for a hard 5K. Cadence held at [176].' },
+  { icon: '📈', q: 'Am I getting fitter at the same heart rate?', tools: ['trends'],
+    a: 'Yes. At an easy heart rate (your zone 2) you ran [6:12/km] in August and [5:51/km] in the last 4 weeks, [21 s] faster for the same effort. Your efficiency factor is up [5%].' },
   { icon: '❤️', q: 'Is my resting heart rate trending up?', tools: ['daily'],
     a: 'Slightly. It\'s [49 bpm] this week vs [47] over the last month. Small rises like this often follow hard training or short sleep. If it stays above [50] for a few days, take an easy day.' },
 ];

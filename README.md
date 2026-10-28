@@ -1,6 +1,6 @@
 # Ask Claude about your Garmin data
 
-Your runs, sleep, HRV, stress, Body Battery and weight, answered by Claude, on your phone or the web. Uses Garmin's official, read-only **Personal API** with your own key. Free and open source.
+Your runs (down to every km: splits, heart-rate drift, pauses, best efforts), strength sets, sleep, HRV, stress, Body Battery and weight, answered by Claude, on your phone or the web. Uses Garmin's official, read-only **Personal API** with your own key. Free and open source.
 
 **Start here: https://abdullahmsalama.github.io/garmin-claude/**
 
@@ -10,6 +10,8 @@ Your runs, sleep, HRV, stress, Body Battery and weight, answered by Claude, on y
 | Setup | ~3 min, nothing to sign up for | ~10 min, free Cloudflare + GitHub accounts |
 | Claude plan | Pro or Max | Free works |
 | ChatGPT | No | Paid plans (developer mode, beta) |
+| Inside each workout | Splits, streams, analysis, strength sets (from the activity file, live) | The same, worked out once and kept |
+| Records and trends | From the period you ask about | From your stored year |
 | History | Fetched live when you ask | A full year, kept up to date every 30 min |
 | Where it runs | Inside your Claude account | In your own Cloudflare account |
 | Guide | [skill/](skill/) | [connector/](connector/) |

@@ -3,7 +3,7 @@
 import { TOOLS, runTool } from './tools.js';
 
 const VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
-const INSTRUCTIONS = 'Read-only access to the owner\'s Garmin Connect data (activities, sleep, HRV, stress, Body Battery, training load, VO2 max, weight). Dates are YYYY-MM-DD in local time. Start with get_summary for an overview; use get_status if data looks missing.';
+const INSTRUCTIONS = 'Read-only access to the owner\'s Garmin Connect data. Dates are YYYY-MM-DD in the owner\'s time zone (from their Garmin settings). Start with get_summary. Lists by date: get_activities, get_daily, get_sleep, get_hrv, get_body_battery_stress, get_body, get_training. One workout: get_activity (details, planned steps; its split_summaries are per-type totals, not km splits), get_splits (per-km splits computed from the recording, watch laps, multisport legs), get_activity_streams (HR, pace, cadence, power, running dynamics, stamina over time), analyze_activity (pauses, HR drift and decoupling, efficiency factor, negative split, best efforts, zones), get_strength (sets, reps, weights). One whole day: get_day (all-day HR curve, overnight HRV readings, Body Battery curve, SpO2, detailed sleep, full daily summary). Long-term: get_records (best efforts, estimated race times), get_trends (week by week), get_profile (HR zones, LTHR and max HR history, fitness age, resting HR by week). Missing data is null. Use get_status if data looks missing.';
 
 const rpc = (id, result) => ({ jsonrpc: '2.0', id, result });
 const rpcErr = (id, code, message) => ({ jsonrpc: '2.0', id: id ?? null, error: { code, message } });

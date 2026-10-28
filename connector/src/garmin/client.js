@@ -54,14 +54,29 @@ export class GarminClient {
   async sleep(from, to) { const r = await this.get(GARMIN.paths.sleep, { startDate: from, endDate: to }); return Array.isArray(r) ? r : []; }
   async hrv(from, to) { const r = await this.get(GARMIN.paths.hrv(from, to)); return r?.hrvSummaries || []; }
   async bodyBattery(from, to) { const r = await this.get(GARMIN.paths.bodyBattery, { startDate: from, endDate: to }); return Array.isArray(r) ? r : []; }
-  // Weight: the "all" endpoint, or the "range" one if Garmin refuses (it answers some ranges with an empty 400).
+  // Weight: the "range" endpoint (the "all" one answers most ranges with an empty 400), "all" as a fallback.
   async weight(from, to) {
-    try { const r = await this.get(GARMIN.paths.weight(from, to)); return Array.isArray(r) ? r : []; } catch (e) {
-      if (e.status !== 400) throw e;
+    try {
       const r = await this.get(GARMIN.paths.weightRange(from, to), { includeAll: true });
       return (r?.dailyWeightSummaries || []).flatMap(d => d.allWeightMetrics?.length ? d.allWeightMetrics : d.latestWeight ? [d.latestWeight] : []);
+    } catch (e) {
+      if (e.status !== 400 && e.status !== 404) throw e;
+      const r = await this.get(GARMIN.paths.weight(from, to)); return Array.isArray(r) ? r : [];
     }
   }
+  // The original activity file (a zip) as bytes.
+  async download(id, retried = false) {
+    const r = await fetch(new URL(GARMIN.paths.download(id), this.base), { headers: { Authorization: `Bearer ${await this.getToken(retried)}` } });
+    if (r.status === 401 && !retried) return this.download(id, true);
+    if (!r.ok) throw new GarminError(`Garmin activity file ${r.status}`, r.status, (await r.text()).slice(0, 200));
+    return r.arrayBuffer();
+  }
+  details(id, points = 2000) { return this.get(GARMIN.paths.details(id), { maxChartSize: points, maxPolylineSize: 0 }); }
+  dailyHeartRate(date) { return this.get(GARMIN.paths.dailyHeartRate, { date }); }
+  hrvDay(date) { return this.get(GARMIN.paths.hrvDay(date)); }
+  sleepDay(date) { return this.get(GARMIN.paths.sleepDay, { date }); }
+  userSummary(date) { return this.get(GARMIN.paths.userSummary, { calendarDate: date }); }
+  spo2(date) { return this.get(GARMIN.paths.spo2(date)); }
   hrZones() { return this.get(GARMIN.paths.hrZones); }
   fitnessAge(date) { return this.get(GARMIN.paths.fitnessAge(date)); }
 }

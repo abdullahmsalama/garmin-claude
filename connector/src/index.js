@@ -9,6 +9,7 @@ import { mcpHandler } from './mcp.js';
 import { sign, verify, sameSecret } from './crypto.js';
 import { ensureSchema } from './schema.js';
 import { OWNER, log, getMeta, syncRecent, queueHistory, runJobs, hasKey, setApiKey } from './store.js';
+import { analyzeRecent } from './deep.js';
 
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 let origin = ''; // this connector's own address, e.g. https://garmin-claude-connector.you.workers.dev
@@ -231,8 +232,9 @@ export default {
     ctx.waitUntil((async () => {
       await ensureSchema(env);
       if (passwordProblem(env) || !(await hasKey(env))) return;
-      await runJobs(env);
+      const busy = await runJobs(env);
       if (Date.now() - (+(await getMeta(env, 'last_sync')) || 0) > 30 * 60000) await syncRecent(env);
+      else if (!busy) await analyzeRecent(env); // one new workout file per run, so the detailed tools answer fast
     })().catch(e => log(env, 'cron-error', e.message)));
   },
 };

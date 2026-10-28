@@ -1,6 +1,6 @@
 # Your own Garmin connector for Claude
 
-Ask Claude about your Garmin data (runs, sleep, HRV, stress, Body Battery, weight) on your phone or the web. This is **your own copy**, running in **your own free Cloudflare account**. It reads Garmin's official, read-only **Personal API** with your own key, keeps a year of history, and updates itself every 30 minutes.
+Ask Claude about your Garmin data (runs, sleep, HRV, stress, Body Battery, weight) on your phone or the web, down to every km split and heartbeat of a workout. This is **your own copy**, running in **your own free Cloudflare account**. It reads Garmin's official, read-only **Personal API** with your own key, keeps a year of history, and updates itself every 30 minutes.
 
 Works with Claude's free plan. Also works with ChatGPT's developer-mode connectors (paid plans, beta).
 Not affiliated with Garmin, Anthropic or OpenAI. Not medical advice.
@@ -22,6 +22,24 @@ Needs a paid ChatGPT plan; OpenAI moves these menus around, so look for "Connect
 3. Your page opens: type your password → **Allow**.
 4. New chat → ＋ → Developer mode → **Garmin**, and ask.
 
+## What Claude can see (18 tools)
+- **Overview:** `get_summary` (last 7 days vs the week before), `get_status` (is the key working, last sync).
+- **By date:** `get_activities`, `get_daily`, `get_sleep`, `get_hrv`, `get_body_battery_stress`, `get_body`, `get_training`.
+- **Inside one workout:**
+  - `get_activity`: details and planned workout steps. Its `split_summaries` are Garmin's per-type totals (interval, run/walk), not km splits.
+  - `get_splits`: per-km splits worked out from the recording (so a run saved as one lap still gets them), the watch's laps, multisport legs.
+  - `get_activity_streams`: pace, HR, cadence, power, altitude, running dynamics and stamina over time.
+  - `analyze_activity`: pauses, HR drift and decoupling, efficiency factor, negative split, best efforts inside it, HR-zone time.
+  - `get_strength`: every set, rep and weight.
+- **One whole day:** `get_day`: all-day HR curve, overnight HRV every 5 minutes, Body Battery curve, SpO2, detailed sleep.
+- **Long-term:** `get_records` (best times, estimated race times), `get_trends` (week by week), `get_profile` (HR zones, LTHR and max HR history, fitness age).
+
+Not in Garmin's Personal API, so not here: Training Readiness, Training Status, VO2 max history, FTP, Garmin's own race predictions.
+
+Times are in **your time zone**, read from your Garmin settings on the first sync.
+
+**Already set up an older version?** The easiest update: tap the Deploy button again to make a fresh copy, paste your Garmin key on its page, then in Claude remove the old connector, add the new link, and start a new chat (Claude only loads the tool list when you connect). Delete the old Worker in Cloudflare afterwards. Workout files are analysed in the background, newest first, so the detailed tools answer instantly for recent workouts; older ones take a few seconds the first time.
+
 ## Why it's private
 - It runs in your Cloudflare account. Nobody else, including the author of this code, can reach your data or key.
 - Your Garmin key and Garmin's access token are stored **encrypted** (AES-GCM) in your own database.
@@ -35,5 +53,5 @@ Needs a paid ChatGPT plan; OpenAI moves these menus around, so look for "Connect
 - Free Cloudflare limits are far above what one person uses.
 
 ## For developers
-`npm install`, then `npm run dev` (put `OWNER_PASSWORD` in `.dev.vars`). Tables are created on first request (`src/schema.js`).
-Code: `src/index.js` (pages, login, OAuth), `src/mcp.js` + `src/tools.js` (the 10 tools), `src/store.js` (sync and storage), `src/garmin/` (API client and data clean-up), `src/crypto.js` (encryption).
+`npm install`, then `npm run dev` (put `OWNER_PASSWORD` in `.dev.vars`). Tables are created on first request (`src/schema.js`). `npm test` runs the tests (Node 22.5+; a fake Garmin server and FIT files built in the test).
+Code: `src/index.js` (pages, login, OAuth), `src/mcp.js` + `src/tools.js` (everyday tools) + `src/tools2.js` (detailed tools), `src/deep.js` (workout files and day detail, cached in D1), `src/store.js` (sync, storage, time zone), `src/garmin/` (API client, data clean-up, FIT decoder and workout analysis), `src/crypto.js` (encryption).

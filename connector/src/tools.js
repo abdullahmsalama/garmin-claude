@@ -1,12 +1,15 @@
 // Read-only MCP tools over the owner's Garmin data. Answers come from D1 (synced from Garmin);
 // recent days are refreshed from Garmin first when the last sync is older than 15 minutes.
+// The 10 everyday tools are here; the detailed ones (inside a workout or a day, records, trends) are in tools2.js.
 import * as N from './garmin/normalize.js';
-import { OWNER, iso, addDays, syncIfStale, activityDetail, getMeta } from './store.js';
+import { OWNER, addDays, syncIfStale, activityDetail, getMeta, today } from './store.js';
+import { DEEP_TOOLS } from './tools2.js';
+import { activityAnalysis } from './deep.js';
 
 const DAY = 864e5;
 const isDate = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !isNaN(Date.parse(s));
-function range(args, defDays = 7, maxDays = 400) {
-  const to = isDate(args?.to) ? args.to : iso(Date.now() + DAY / 2);
+async function range(env, args, defDays = 7, maxDays = 400) {
+  const to = isDate(args?.to) ? args.to : await today(env);
   let from = isDate(args?.from) ? args.from : addDays(to, -(defDays - 1));
   if (from > to) throw new Error('"from" is after "to"');
   if ((Date.parse(to) - Date.parse(from)) / DAY > maxDays) from = addDays(to, -maxDays);
@@ -26,7 +29,7 @@ export const TOOLS = [
     description: 'Workouts between two dates (runs, rides, walks, strength…): km, minutes, pace (min/km), heart rate (bpm), cadence, climb, Garmin training load and training effect, VO2 max, minutes in each HR zone.',
     inputSchema: { ...dateArgs, properties: { ...dateArgs.properties, type: { type: 'string', description: 'Optional filter, e.g. "running"' } } },
     async run(env, a) {
-      const { from, to } = range(a, 7);
+      const { from, to } = await range(env, a, 7);
       let list = (await rows(env, 'activities', from, to)).map(N.activity);
       if (a?.type) list = list.filter(x => (x.type || '').includes(String(a.type).toLowerCase()));
       return { from, to, count: list.length, total_km: sum(list.map(x => x.km)), total_min: sum(list.map(x => x.min)), activities: list };
@@ -34,7 +37,7 @@ export const TOOLS = [
   },
   {
     name: 'get_activity',
-    description: 'One workout in detail: everything from get_activities plus interval/run/walk splits, recovery HR, grade-adjusted pace, RPE, stamina, Body Battery change, and the planned workout steps if it was a structured workout.',
+    description: 'One workout in detail: everything from get_activities plus split_summaries (Garmin\'s per-type totals for interval/run/walk segments; for per-km splits or laps call get_splits), recovery HR, grade-adjusted pace, RPE, stamina, Body Battery change, and the planned workout steps if it was a structured workout.',
     inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'Activity id from get_activities' } }, required: ['id'] },
     async run(env, a) {
       const id = String(a?.id || '').replace(/\D/g, '');
@@ -42,21 +45,26 @@ export const TOOLS = [
       const row = await env.DB.prepare("SELECT data FROM summaries WHERE user_id = ?1 AND type = 'activities' AND id = ?2").bind(OWNER, id).first();
       const d = await activityDetail(env, id);
       const base = row ? N.activity(JSON.parse(row.data)) : N.clean({ id, name: d.detail?.activityName, type: d.detail?.activityTypeDTO?.typeKey, date: d.detail?.summaryDTO?.startTimeLocal?.slice(0, 10) });
-      return { ...base, ...N.activityDetail(d.detail, d.workouts) };
+      const out = { ...base, ...N.activityDetail(d.detail, d.workouts) };
+      // Multisport: each leg (from the activity file).
+      if (d.detail?.isMultiSportParent || /multi_sport/.test(base.type || '')) {
+        try { out.legs = (await activityAnalysis(env, id)).legs; out.child_activity_ids = d.detail?.metadataDTO?.childIds?.map(String); } catch (e) { out.legs_error = e.message; }
+      }
+      return out;
     },
   },
   {
     name: 'get_daily',
     description: 'Daily totals per day: steps, km, calories, resting/min/max heart rate, intensity minutes, floors, stress, Body Battery high/low, respiration, SpO2.',
     inputSchema: dateArgs,
-    async run(env, a) { const { from, to } = range(a, 7); return { from, to, days: (await rows(env, 'dailies', from, to)).map(N.daily) }; },
+    async run(env, a) { const { from, to } = await range(env, a, 7); return { from, to, days: (await rows(env, 'dailies', from, to)).map(N.daily) }; },
   },
   {
     name: 'get_sleep',
     description: 'Sleep per night: total, deep, light, REM and awake minutes, sleep score and quality, bed and wake time (local), sleeping HR, stress, respiration, SpO2.',
     inputSchema: dateArgs,
     async run(env, a) {
-      const { from, to } = range(a, 7);
+      const { from, to } = await range(env, a, 7);
       const nights = (await rows(env, 'sleep', from, to)).map(N.sleep).filter(n => n.total_min);
       return { from, to, avg_total_min: mean(nights.map(n => n.total_min)), avg_score: mean(nights.map(n => n.score)), nights };
     },
@@ -65,14 +73,14 @@ export const TOOLS = [
     name: 'get_hrv',
     description: 'Overnight heart-rate variability per night (ms): last-night average, 5-minute high, 7-day average, Garmin HRV status and your balanced baseline range.',
     inputSchema: dateArgs,
-    async run(env, a) { const { from, to } = range(a, 7); const nights = (await rows(env, 'hrv', from, to)).map(N.hrv); return { from, to, avg_ms: mean(nights.map(n => n.last_night_avg_ms)), nights }; },
+    async run(env, a) { const { from, to } = await range(env, a, 7); const nights = (await rows(env, 'hrv', from, to)).map(N.hrv); return { from, to, avg_ms: mean(nights.map(n => n.last_night_avg_ms)), nights }; },
   },
   {
     name: 'get_body_battery_stress',
     description: 'Stress (0-100) and Body Battery (0-100) per day: average/max stress, minutes at rest/low/medium/high stress, Body Battery charged, drained, high, low, start and end, Garmin feedback and what drained or charged it.',
     inputSchema: dateArgs,
     async run(env, a) {
-      const { from, to } = range(a, 7);
+      const { from, to } = await range(env, a, 7);
       const bb = new Map((await rows(env, 'bodyBattery', from, to)).map(b => [b.date, N.bodyBattery(b)]));
       const days = (await rows(env, 'dailies', from, to)).map(N.daily).map(d => N.clean({
         date: d.date, avg_stress: d.avg_stress, max_stress: d.max_stress, stress_qualifier: d.stress_qualifier, rest_min: d.rest_min, low_stress_min: d.low_stress_min, medium_stress_min: d.medium_stress_min, high_stress_min: d.high_stress_min,
@@ -87,7 +95,7 @@ export const TOOLS = [
     description: 'Fitness and training load: latest VO2 max (from your runs/rides), fitness age, Garmin training load for the last 7 days vs the 4-week average, weekly km/minutes/sessions, training-effect labels, and your HR zones. Training Readiness and Training Status are not in Garmin\'s Personal API.',
     inputSchema: { type: 'object', properties: { to: { type: 'string', description: 'Last day, default today' } } },
     async run(env, a) {
-      const { to } = range(a, 28);
+      const { to } = await range(env, a, 28);
       const acts = (await rows(env, 'activities', addDays(to, -27), to)).map(N.activity);
       const vo2 = (await rows(env, 'activities', addDays(to, -180), to)).map(N.activity).filter(x => x.vo2max).map(x => ({ date: x.date, type: x.type, vo2max: x.vo2max }));
       const weeks = [0, 1, 2, 3].map(w => {
@@ -108,7 +116,7 @@ export const TOOLS = [
         load_note: 'Garmin activity training load (EPOC). Ratio ~0.8-1.3 = steady; above 1.5 = a big jump.',
         weeks, training_effect_labels_28d: Object.keys(labels).length ? labels : undefined,
         hr_zones: zones ? N.hrZones(zones) : undefined,
-        not_available: "Training Readiness and Training Status aren't offered by Garmin's Personal API.",
+        not_available: "Training Readiness and Training Status aren't offered by Garmin's Personal API. LTHR, max HR and zone history: get_profile.",
       });
     },
   },
@@ -117,7 +125,7 @@ export const TOOLS = [
     description: 'Weight and body composition: weight kg, BMI, body fat %, body water %, muscle and bone kg.',
     inputSchema: { type: 'object', properties: { from: { type: 'string', description: 'Default 90 days ago' }, to: { type: 'string' } } },
     async run(env, a) {
-      const { from, to } = range(a, 90);
+      const { from, to } = await range(env, a, 90);
       const list = (await rows(env, 'weight', from, to)).map(N.weight);
       return { from, to, count: list.length, latest: list.at(-1), measurements: list, ...(list.length ? {} : { note: 'No weight entries in Garmin Connect for this range.' }) };
     },
@@ -128,7 +136,7 @@ export const TOOLS = [
     inputSchema: { type: 'object', properties: { days: { type: 'integer', description: 'Default 7' }, to: { type: 'string', description: 'Last day, default today' } } },
     async run(env, a) {
       const n = Math.max(1, Math.min(90, parseInt(a?.days, 10) || 7));
-      const to = isDate(a?.to) ? a.to : iso(Date.now() + DAY / 2);
+      const to = isDate(a?.to) ? a.to : await today(env);
       const period = async (start, end) => {
         const acts = (await rows(env, 'activities', start, end)).map(N.activity);
         const days = (await rows(env, 'dailies', start, end)).map(N.daily);
@@ -164,6 +172,7 @@ export const TOOLS = [
       return N.clean({ key_error: await getMeta(env, 'key_error'), last_sync: last ? new Date(last).toISOString() : 'never', last_sync_result: await getMeta(env, 'last_sync_result'), stored: types });
     },
   },
+  ...DEEP_TOOLS,
 ];
 
 // Runs a tool, refreshing recent data first if it's stale (a sync failure doesn't block the answer).

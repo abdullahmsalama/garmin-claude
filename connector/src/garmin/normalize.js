@@ -72,7 +72,8 @@ export function activityDetail(d, workouts) {
     avg_respiration_brpm: r1(s.avgRespirationRate),
     stamina_start_pct: s.beginPotentialStamina, stamina_end_pct: s.endPotentialStamina,
     temp_c: r1(s.averageTemperature),
-    splits: (d?.splitSummaries || []).filter(x => x.splitType).map(x => clean({
+    // Garmin's split summaries: one total per segment type (interval, run/walk…), not laps or km splits.
+    split_summaries: (d?.splitSummaries || []).filter(x => x.splitType).map(x => clean({
       type: x.splitType.toLowerCase(), count: x.noOfSplits, km: km(x.distance), min: min(x.movingDuration ?? x.duration),
       pace_min_km: isRun(type) ? pace(x.distance && x.duration ? x.distance / (x.movingDuration ?? x.duration) : x.averageSpeed) : undefined,
       avg_hr_bpm: x.averageHR != null ? Math.round(x.averageHR) : undefined, max_hr_bpm: x.maxHR != null ? Math.round(x.maxHR) : undefined,

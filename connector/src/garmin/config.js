@@ -18,6 +18,16 @@ export const GARMIN = {
     hrZones: '/biometric-service/heartRateZones/v2',
     fitnessAge: date => `/fitnessage-service/fitnessage/v2/${date}`,
     settings: '/userprofile-service/userprofile/settings',
+    // Inside an activity: the original file (zip with a .fit) and Garmin's chart data (not in the docs, but answers).
+    download: id => `/download-service/files/activity/${id}`,
+    details: id => `/activity-service/activity/${id}/details`, // ?maxChartSize&maxPolylineSize
+    // One day in detail.
+    dailyHeartRate: '/wellness-service/wellness/dailyHeartRate', // ?date: all-day HR, ~2 min
+    hrvDay: date => `/hrv-service/hrv/${date}`, // overnight readings, every 5 min
+    sleepDay: '/sleep-service/sleep/dailySleep', // ?date
+    userSummary: '/usersummary-service/usersummary/daily', // ?calendarDate
+    spo2: date => `/wellness-service/wellness/daily/spo2acclimation/${date}`,
+    weightGoals: (from, to) => `/goal-service/goal/user/effective/weightgoal/${from}/${to}`,
   },
   // Days per request when loading history (Garmin's documented maximums, or a safe size where none is given).
   chunkDays: { activities: 31, dailies: 120, sleep: 31, hrv: 31, bodyBattery: 31, weight: 120 },

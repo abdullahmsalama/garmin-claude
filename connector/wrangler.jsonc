@@ -11,5 +11,8 @@
   "d1_databases": [{ "binding": "DB", "database_name": "garmin-connector-data" }],
   // Claude's login sessions for the connector (only hashes and encrypted data).
   "kv_namespaces": [{ "binding": "OAUTH_KV" }],
+  // Your time zone is read from your Garmin settings. TZ is only the fallback until then
+  // (an IANA name such as "Europe/London" or "America/New_York").
+  "vars": { "TZ": "UTC" },
   "observability": { "enabled": false }
 }
