@@ -300,6 +300,33 @@ class Commands(unittest.TestCase):
         self.assertIsNone(p["fitness_age_by_month"])  # the fake gives the same value for every date: no fake history
         self.assertIn("same fitness age", p["fitness_age_history_note"])
 
+    def test_latest_in_one_call(self):
+        x = self.cmd("latest", "--type", "running", "--to", "2026-10-28")
+        self.assertEqual(x["workout"]["id"], "111")
+        self.assertEqual(len([k for k in x["splits_km"] if not k["partial"]]), 5)
+        self.assertEqual(x["analysis"]["moving_time"], "25:00")
+        self.assertIsNone(x["compared_with"])  # no other similar run in the fake account
+        g = self.cmd("latest", "--to", "2026-10-28")
+        self.assertEqual(g["workout"]["id"], "222")  # newest of any type
+
+    def test_latest_compares_with_similar_runs(self):
+        sys.path.insert(0, SCRIPTS)
+        import garmin
+        run = lambda i, d, km, hr: {"activityId": i, "activityName": f"Run {i}", "startTimeLocal": f"{d} 07:00:00", "activityType": {"typeKey": "running"},  # noqa: E731
+                                     "distance": km * 1000, "duration": km * 300, "averageHR": hr}
+        acts = [run(1, "2026-10-05", 5, 150), run(2, "2026-10-10", 10, 140), run(3, "2026-10-15", 5.4, 148), run(4, "2026-10-27", 5, 145)]
+        old = garmin.raw_activities, garmin.activity_analysis
+        garmin.raw_activities = lambda frm, to: list(acts)
+        garmin.activity_analysis = lambda aid: (_ for _ in ()).throw(garmin.GarminError("no file"))
+        try:
+            x = garmin.latest(None, "2026-10-28")
+        finally:
+            garmin.raw_activities, garmin.activity_analysis = old
+        self.assertEqual(x["workout"]["id"], "4")
+        self.assertEqual([w["date"] for w in x["compared_with"]["workouts"]], ["2026-10-15", "2026-10-05"])  # the 10 km run isn't similar
+        self.assertGreater(x["compared_with"]["this_efficiency_factor"], x["compared_with"]["workouts"][1]["efficiency_factor"])
+        self.assertIn("no file", x["analysis_error"])
+
     def test_max_hr_seen_ignores_spikes(self):
         sys.path.insert(0, SCRIPTS)
         import garmin

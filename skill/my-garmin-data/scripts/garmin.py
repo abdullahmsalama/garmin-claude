@@ -863,6 +863,40 @@ def scan(kind, frm, to, n):
                     "older bests are missed unless you scan further back. Garmin's own records (1 km to marathon, all activities) are in the records command."}
 
 
+def latest(kind, to, days=28):
+    """The newest workout in one call: its summary, per-km splits, analysis, and how it compares with
+    up to 5 similar recent workouts (same type, distance within 30%). One list request + one file."""
+    frm = (day(to) - dt.timedelta(days=days - 1)).isoformat()
+    acts = [a for a in raw_activities(frm, to) if not kind or kind.lower() in type_of(a)]
+    if not acts:
+        raise GarminError(f"No {kind + ' ' if kind else ''}workouts between {frm} and {to}.")
+    acts.sort(key=lambda a: a.get("startTimeLocal") or "")
+    a = acts[-1]
+    out = {"workout": activity(a)}
+    try:
+        x = activity_analysis(str(a.get("activityId")))
+        out.update({"splits_km": x["splits_km"], "laps": len(x["laps"]), "analysis": x["analysis"], "pauses": x["pauses"], "best_efforts": x["best_efforts"]})
+        if x.get("legs"):
+            out["legs"] = x["legs"]
+    except GarminError as e:
+        out["analysis_error"] = str(e)
+    D = a.get("distance") or 0
+
+    def ef(b):
+        dur = b.get("movingDuration") or b.get("duration")
+        return round(b["distance"] / dur * 60 / b["averageHR"], 2) if b.get("distance") and dur and b.get("averageHR") else None
+
+    similar = [b for b in reversed(acts[:-1]) if type_of(b) == type_of(a) and (not D or (b.get("distance") and abs(b["distance"] - D) <= 0.3 * D))][:5]
+    if similar:
+        rows = [{**activity(b), "efficiency_factor": ef(b)} for b in similar]
+        out["compared_with"] = {"how": f"Your last {len(rows)} {type_of(a).replace('_', ' ')} workouts of a similar distance (within 30%) in the last {days} days",
+                                "this_efficiency_factor": ef(a), "workouts": [clean({k: r.get(k) for k in ("date", "name", "km", "pace_min_km", "speed_kmh", "avg_hr_bpm", "efficiency_factor", "training_load")}) for r in rows],
+                                "note": "Efficiency factor = metres per minute per heartbeat: higher = more speed for the same effort."}
+    else:
+        out["compared_with"] = None
+    return out
+
+
 def strength(aid, frm, to):
     if aid:
         a = activity_analysis(aid)
@@ -965,6 +999,8 @@ def run(args):
     if c == "trends":
         frm, to = date_range(args, 182, max_days=3660)
         return trends(args.type, frm, to, args.by)
+    if c == "latest":
+        return latest(args.type, args.to or dt.date.today().isoformat())
     if c == "scan":
         frm, to = date_range(args, 365, max_days=3660)
         return scan(args.type, frm, to, max(1, min(60, args.runs or 30)))
@@ -988,7 +1024,7 @@ def run(args):
 
 def main():
     p = argparse.ArgumentParser(description="Read your own Garmin Connect data (read-only).")
-    p.add_argument("command", choices=["check", "overview", "activities", "activity", "daily", "sleep", "hrv", "body-battery", "weight", "hr-zones", "fitness-age",
+    p.add_argument("command", choices=["check", "latest", "overview", "activities", "activity", "daily", "sleep", "hrv", "body-battery", "weight", "hr-zones", "fitness-age",
                                        "splits", "analyze", "streams", "strength", "day", "records", "trends", "profile", "scan"])
     p.add_argument("id", nargs="?", help="activity id (activity, splits, analyze, streams, strength)")
     p.add_argument("--from", dest="frm", help="YYYY-MM-DD")

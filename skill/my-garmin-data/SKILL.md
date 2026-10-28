@@ -14,8 +14,25 @@ Run the script with Python and read the JSON it prints. Always use the path of t
 python3 /mnt/skills/user/my-garmin-data/scripts/garmin.py overview
 ```
 
+## Read only what the question needs
+Pick the smallest read that answers the question. Don't load weeks of history for a question about one workout or one day.
+
+| The user asks about… | Read | Range |
+|---|---|---|
+| "the run I just did", "my last workout", "what do you think of today's run" | `latest` (add `--type running` etc. if they name one) | newest workout + 4 weeks for comparison, **one call** |
+| a specific workout ("Tuesday's run", "my long run on the 12th") | `activities --from D --to D` to find the id, then `splits` / `analyze <id>` | that day |
+| today / last night ("how did I sleep", "am I recovered today") | `day` (today) or `overview` | 1 day / 7 days |
+| "this week", "lately", "recently" | `overview`, or the one list the question is about | 7 days for "this week"; **14 days** for "lately/recently" |
+| "this month", "last few weeks" | the one list it's about | 28-31 days |
+| trends, progress, "am I getting fitter", records, "best 3k", fitness age over time | `trends` / `records` / `scan` / `profile` | **ask first** if they gave no period: "Over the last 3 months, or longer?" (these read months of data; `scan` takes about a minute) |
+
+- Always say which period you looked at ("from your last 14 days…") and offer to look further back.
+- Within one chat, re-use what you already fetched; workout analyses are cached for the chat, so asking again about the same workout is instant.
+- Don't call `overview` "to be safe" before a question about one workout.
+
 | Command | What it returns | Default range |
 |---|---|---|
+| `latest [--type running]` | **The newest workout in one call**: its summary, per-km splits, analysis (pauses, HR drift, efficiency, zones, best efforts), and a comparison with up to 5 similar recent workouts (same type, distance within 30%). | newest in 28 days |
 | `overview` | Last 7 days at a glance: training, sleep, HRV, resting HR, Body Battery. **Start here for "how am I doing / am I recovered" questions.** | 7 days |
 | `activities [--type running]` | Workouts: km, min, pace (min/km), HR, cadence, climb, training load, training effect, VO2 max, HR-zone minutes, `id` | 7 days |
 | `activity <id>` | One workout's summary: recovery HR, grade-adjusted pace, RPE, stamina, planned workout steps. Its `split_summaries` are Garmin's **totals per split type** (e.g. all active intervals together), **not** per-km splits | – |
