@@ -38,7 +38,7 @@ const DEMOS = [
   { icon: '📈', q: 'Am I getting fitter at the same heart rate?', tools: ['trends'],
     a: 'Yes. At an easy heart rate (your zone 2) you ran [6:12/km] in August and [5:51/km] in the last 4 weeks, [21 s] faster for the same effort. Your efficiency factor is up [5%].' },
   { icon: '❤️', q: 'Is my resting heart rate trending up?', tools: ['daily'],
-    a: 'Slightly. It\'s [49 bpm] this week vs [47] over the last month. Small rises like this often follow hard training or short sleep. If it stays above [50] for a few days, take an easy day.' },
+    a: 'Slightly. It\'s [55 bpm] this week vs [53] over the last month. Small rises like this often follow hard training or short sleep. If it stays above [56] for a few days, take an easy day.' },
 ];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let demoRun = 0;
